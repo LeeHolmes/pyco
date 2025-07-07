@@ -6,7 +6,7 @@ from statistics import *
 if sys.implementation.name == 'cpython':
     def displayhook(value):
         if callable(value):
-            value()
+            displayhook(value())
         else:
             sys.__displayhook__(value)
     sys.displayhook = displayhook
@@ -14,7 +14,7 @@ elif sys.implementation.name == 'micropython':
     __original_repl_print__ = __repl_print__
     def displayhook(value):
         if callable(value):
-            value()
+            displayhook(value())
         else:
             __original_repl_print__(value)
     __repl_print__ = displayhook
@@ -84,6 +84,9 @@ def c_f_c(fahrenheit):
 def f_c(fahrenheit):
     return c_f_c(fahrenheit)
 
+def tally():
+    tallyCounter = input("Tally: ")
+    return len(tallyCounter)
 
 kb = 1024
 mb = kb * kb
