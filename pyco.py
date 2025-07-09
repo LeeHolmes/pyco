@@ -1,5 +1,7 @@
 # pyco calculator customizations
 import sys
+import math
+import statistics
 from math import *
 from statistics import *
 
@@ -10,6 +12,40 @@ if sys.implementation.name == 'cpython':
         else:
             sys.__displayhook__(value)
     sys.displayhook = displayhook
+
+    def my_except_hook(exctype, value, traceback):
+        if exctype == SyntaxError:
+            if(value.text.strip().endswith("*")):
+                term = value.text.strip()
+                lastDot = term.rfind('.')
+                filter = ""
+                results = []
+                
+                if lastDot != -1:
+                    filter = term[lastDot+1:-1]
+                    term = term[:lastDot]
+
+                    try:
+                        results = dir(eval(term))
+                    except:
+                        results = []
+                else:
+                    filter = term[:-1]
+                    results = globals().keys()
+
+                found = False
+                for current in results:
+                    if current.lower().startswith(filter.lower()):
+                        print(current, end = " ")
+                        found = True
+                if found:
+                    print()
+            else:
+                sys.__excepthook__(exctype, value, traceback)
+        else:
+            sys.__excepthook__(exctype, value, traceback)
+    sys.excepthook = my_except_hook
+
 elif sys.implementation.name == 'micropython':
     __original_repl_print__ = __repl_print__
     def displayhook(value):
@@ -101,5 +137,19 @@ print("""
              │ ░ ░ ░ ░ ░  │
              │  ░ ░ ░ ░ ░ │
              └────────────┘
-            Happy Calculating
+           Happy Calculating!
 """)
+
+## Determine if pyco has been embedded via py2exe. If so,
+## host the interactive console ourselves.
+compiled_pyco = False
+for arg in sys.argv:
+    if "pyco.exe" in arg:
+        compiled_pyco = True
+        break
+if compiled_pyco:
+    import code
+
+    vars = globals()
+    vars.update(locals())
+    code.interact(local = vars, banner = "")
