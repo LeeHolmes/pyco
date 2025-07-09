@@ -61,7 +61,7 @@ In pyco you would type:
 ## Using pyco
 Pyco has many features to simplify your interactive experience.
 
-You've already entered some simple calculations and might have already noticed some of these. While entering calculations, pyco lets you edit them in the way that you are used to with many other programs: _HOME_ and _END_ to go to the beginning and end of lines, arrow keys to move left and right, and even up and down to have pyco bring back a calculation that you've previously entered.
+You've already entered some simple calculations and might have already noticed some of these. While entering calculations, pyco lets you edit them in the way that you are used to with many other programs: _HOME_ and _END_ to go to the beginning and end of lines, arrow keys to move left and right, and even up and down to have pyco bring a calculation that you've previously entered.
 
 ### Example
 From the previous calculation, what happens if you tipped at 15%? Press the _UP_ key and notice that pyco re-populates your calculation from what you previously typed. Use the left and right arrow keys (and backspace or delete) to change the 1.2 to 1.15. Then push ENTER.
@@ -118,7 +118,7 @@ Your table is splitting the $113 bill (with 20% tip) 5 ways. But one friend is g
 54.239999999999995
 ```
 
-## TODO
+## Implemented but not yet documented
 - doing computer math (1\*gb, 10\*mb)
 - entering lists
 - calling functions
