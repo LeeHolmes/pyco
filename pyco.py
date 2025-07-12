@@ -15,27 +15,59 @@ if sys.implementation.name == 'cpython':
 
     def my_except_hook(exctype, value, traceback):
         if exctype == SyntaxError:
-            if(value.text.strip().endswith("*")):
-                term = value.text.strip()
+            cleanvalue = value.text.strip()
+            if(cleanvalue.endswith("*") or cleanvalue.startswith("*")):
+                term = cleanvalue
                 lastDot = term.rfind('.')
                 filter = ""
                 results = []
                 
+                # Determine wildcard pattern
+                starts_with_star = term.startswith("*")
+                ends_with_star = term.endswith("*")
+                
                 if lastDot != -1:
-                    filter = term[lastDot+1:-1]
+                    # Handle object.method* or *object.method or *object.method* patterns
+                    if starts_with_star and ends_with_star:
+                        filter = term[lastDot+2:-1]  # Remove *. and trailing *
+                    elif starts_with_star:
+                        filter = term[lastDot+2:]    # Remove *.
+                    else:  # ends_with_star
+                        filter = term[lastDot+1:-1]  # Remove . and trailing *
+                    
                     term = term[:lastDot]
+                    if starts_with_star:
+                        term = term[1:]  # Remove leading *
 
                     try:
                         results = dir(eval(term))
                     except:
                         results = []
                 else:
-                    filter = term[:-1]
+                    # Handle *filter*, *filter, or filter* patterns
+                    if starts_with_star and ends_with_star:
+                        filter = term[1:-1]  # Remove both * characters
+                    elif starts_with_star:
+                        filter = term[1:]    # Remove leading *
+                    else:  # ends_with_star
+                        filter = term[:-1]   # Remove trailing *
+                    
                     results = globals().keys()
 
                 found = False
                 for current in results:
-                    if current.lower().startswith(filter.lower()):
+                    match = False
+                    if starts_with_star and ends_with_star:
+                        # Contains match
+                        match = filter.lower() in current.lower()
+                    elif starts_with_star:
+                        # Ends with match
+                        match = current.lower().endswith(filter.lower())
+                    else:  # ends_with_star
+                        # Starts with match
+                        match = current.lower().startswith(filter.lower())
+                    
+                    if match:
                         print(current, end = " ")
                         found = True
                 if found:
