@@ -17,119 +17,12 @@ if sys.implementation.name == 'cpython':
         if exctype == SyntaxError:
             cleanvalue = value.text.strip()
             if(cleanvalue.endswith("*") or cleanvalue.startswith("*")):
-                term = cleanvalue
-                lastDot = term.rfind('.')
-                filter = ""
-                results = []
-                
-                # Determine wildcard pattern
-                starts_with_star = term.startswith("*")
-                ends_with_star = term.endswith("*")
-                
-                if lastDot != -1:
-                    # Handle object.method* or *object.method or *object.method* patterns
-                    object_part = term[:lastDot]
-                    method_part = term[lastDot+1:]
-                    
-                    # Determine wildcard patterns for both parts
-                    obj_starts_with_star = object_part.startswith("*")
-                    obj_ends_with_star = object_part.endswith("*")
-                    method_starts_with_star = method_part.startswith("*")
-                    method_ends_with_star = method_part.endswith("*")
-                    
-                    # Extract object filter
-                    if obj_starts_with_star and obj_ends_with_star:
-                        obj_filter = object_part[1:-1]  # Remove both * characters
-                    elif obj_starts_with_star:
-                        obj_filter = object_part[1:]    # Remove leading *
-                    elif obj_ends_with_star:
-                        obj_filter = object_part[:-1]   # Remove trailing *
-                    else:
-                        obj_filter = object_part
-                    
-                    # Extract method filter
-                    if method_starts_with_star and method_ends_with_star:
-                        method_filter = method_part[1:-1]  # Remove both * characters
-                    elif method_starts_with_star:
-                        method_filter = method_part[1:]    # Remove leading *
-                    elif method_ends_with_star:
-                        method_filter = method_part[:-1]   # Remove trailing *
-                    else:
-                        method_filter = method_part
-                    
-                    # Find matching objects
-                    matching_objects = []
-                    for obj_name in globals().keys():
-                        obj_match = False
-                        if obj_starts_with_star and obj_ends_with_star:
-                            obj_match = obj_filter.lower() in obj_name.lower()
-                        elif obj_starts_with_star:
-                            obj_match = obj_name.lower().endswith(obj_filter.lower())
-                        elif obj_ends_with_star:
-                            obj_match = obj_name.lower().startswith(obj_filter.lower())
-                        else:
-                            obj_match = obj_name.lower() == obj_filter.lower()
-                        
-                        if obj_match:
-                            matching_objects.append(obj_name)
-                    
-                    # For each matching object, find matching methods
-                    found = False
-                    for obj_name in matching_objects:
-                        try:
-                            obj_methods = dir(eval(obj_name))
-                            matching_methods = []
-                            
-                            for method_name in obj_methods:
-                                method_match = False
-                                if method_starts_with_star and method_ends_with_star:
-                                    method_match = method_filter.lower() in method_name.lower()
-                                elif method_starts_with_star:
-                                    method_match = method_name.lower().endswith(method_filter.lower())
-                                elif method_ends_with_star:
-                                    method_match = method_name.lower().startswith(method_filter.lower())
-                                else:
-                                    method_match = method_name.lower() == method_filter.lower()
-                                
-                                if method_match:
-                                    matching_methods.append(method_name)
-                            
-                            if matching_methods:
-                                print(f"{obj_name}: ", end="")
-                                print(" ".join(matching_methods))
-                                found = True
-                        except:
-                            pass
+                results = find(cleanvalue)
+                if results:
+                    for result in results:
+                        print(result)
                 else:
-                    # Handle *filter*, *filter, or filter* patterns
-                    if starts_with_star and ends_with_star:
-                        filter = term[1:-1]  # Remove both * characters
-                    elif starts_with_star:
-                        filter = term[1:]    # Remove leading *
-                    else:  # ends_with_star
-                        filter = term[:-1]   # Remove trailing *
-                    
-                    results = globals().keys()
-
-                # Handle simple wildcard patterns (no dot)
-                found = False
-                for current in results:
-                    match = False
-                    if starts_with_star and ends_with_star:
-                        # Contains match
-                        match = filter.lower() in current.lower()
-                    elif starts_with_star:
-                        # Ends with match
-                        match = current.lower().endswith(filter.lower())
-                    else:  # ends_with_star
-                        # Starts with match
-                        match = current.lower().startswith(filter.lower())
-                    
-                    if match:
-                        print(current, end = " ")
-                        found = True
-                if found:
-                    print()
+                    print("No matches found.")
             else:
                 sys.__excepthook__(exctype, value, traceback)
         else:
@@ -146,12 +39,135 @@ elif sys.implementation.name == 'micropython':
     __repl_print__ = displayhook
 
 def find(term):
-    """Find all global variables or functions that contain the given term in their name."""
-    found = []
-    for current in globals():
-        if term in current:
-            found.append(current)
-    return found
+    """Find all global variables or functions that match the given term pattern.
+    
+    Supports wildcard patterns:
+    - term* : finds items starting with 'term'
+    - *term : finds items ending with 'term'
+    - *term* : finds items containing 'term'
+    - obj.method* : finds methods in 'obj' starting with 'method'
+    - *obj*.method* : finds methods matching 'method*' in objects matching '*obj*'
+    """
+    # Handle simple string search (no wildcards)
+    if not "*" in term:
+        found = []
+        for current in globals():
+            if term in current:
+                found.append(current)
+        return found
+    
+    # Handle wildcard patterns
+    lastDot = term.rfind('.')
+    filter = ""
+    results = []
+    
+    if lastDot != -1:
+        # Handle object.method patterns
+        object_part = term[:lastDot]
+        method_part = term[lastDot+1:]
+        
+        # Determine wildcard patterns for both parts
+        obj_starts_with_star = object_part.startswith("*")
+        obj_ends_with_star = object_part.endswith("*")
+        method_starts_with_star = method_part.startswith("*")
+        method_ends_with_star = method_part.endswith("*")
+        
+        # Extract object filter
+        if obj_starts_with_star and obj_ends_with_star:
+            obj_filter = object_part[1:-1]  # Remove both * characters
+        elif obj_starts_with_star and not obj_ends_with_star:
+            obj_filter = object_part[1:]    # Remove leading *
+        elif obj_ends_with_star:
+            obj_filter = object_part[:-1]   # Remove trailing *
+        else:
+            obj_filter = object_part
+        
+        # Extract method filter
+        if method_starts_with_star and method_ends_with_star:
+            method_filter = method_part[1:-1]  # Remove both * characters
+        elif method_starts_with_star and not method_ends_with_star:
+            method_filter = method_part[1:]    # Remove leading *
+        elif method_ends_with_star:
+            method_filter = method_part[:-1]   # Remove trailing *
+        else:
+            method_filter = method_part
+
+        # Find matching objects
+        matching_objects = []
+        for obj_name in globals().keys():
+            obj_match = False
+            if obj_starts_with_star and obj_ends_with_star:
+                obj_match = obj_filter.lower() in obj_name.lower()
+            elif obj_starts_with_star and not obj_ends_with_star:
+                obj_match = obj_name.lower().endswith(obj_filter.lower())
+            elif obj_ends_with_star:
+                obj_match = obj_name.lower().startswith(obj_filter.lower())
+            else:
+                obj_match = obj_name.lower() == obj_filter.lower()
+            
+            if obj_match:
+                matching_objects.append(obj_name)
+        
+        # For each matching object, find matching methods
+        found_results = []
+        for obj_name in matching_objects:
+            try:
+                obj_methods = dir(eval(obj_name))
+                matching_methods = []
+                
+                for method_name in obj_methods:
+                    method_match = False
+                    if method_starts_with_star and method_ends_with_star:
+                        method_match = method_filter.lower() in method_name.lower()
+                    elif method_starts_with_star and not method_ends_with_star:
+                        method_match = method_name.lower().endswith(method_filter.lower())
+                    elif method_ends_with_star:
+                        method_match = method_name.lower().startswith(method_filter.lower())
+                    else:
+                        method_match = method_name.lower() == method_filter.lower()
+                    
+                    if method_match:
+                        matching_methods.append(method_name)
+                
+                if matching_methods:
+                    found_results.append(f"{obj_name}: {' '.join(matching_methods)}")
+            except:
+                pass
+        
+        return found_results
+    else:
+        # Determine wildcard pattern
+        starts_with_star = term.startswith("*")
+        ends_with_star = term.endswith("*")
+        
+        # Handle *filter*, *filter, or filter* patterns
+        if starts_with_star and ends_with_star:
+            filter = term[1:-1]  # Remove both * characters
+        elif starts_with_star:
+            filter = term[1:]    # Remove leading *
+        else:  # ends_with_star
+            filter = term[:-1]   # Remove trailing *
+        
+        results = globals().keys()
+
+        # Handle simple wildcard patterns (no dot)
+        found_results = []
+        for current in results:
+            match = False
+            if starts_with_star and ends_with_star:
+                # Contains match
+                match = filter.lower() in current.lower()
+            elif starts_with_star:
+                # Ends with match
+                match = current.lower().endswith(filter.lower())
+            else:  # ends_with_star
+                # Starts with match
+                match = current.lower().startswith(filter.lower())
+            
+            if match:
+                found_results.append(current)
+        
+        return found_results
 
 def asciitable():
     """Display a formatted ASCII table with decimal, hexadecimal, and character representations."""
