@@ -743,25 +743,3 @@ if __name__ == '__main__':
         for test, traceback in result.errors:
             print(f"- {test}: {traceback.split('Error:')[-1].strip()}")
     
-    print(f"{'='*60}")
-    
-    # Print test class summary
-    test_classes = [
-        'TestPycoUtilityFunctions',
-        'TestPycoWildcardSearch', 
-        'TestPycoExceptionHandling',
-        'TestPycoStatisticsFunctions',
-        'TestPycoTemperatureConversions',
-        'TestPycoDistanceConversions',
-        'TestPycoConstants',
-        'TestPycoConversionChains',
-        'TestPycoEdgeCases',
-        'TestPycoAliases'
-    ]
-    
-    print("Test Coverage Summary:")
-    for test_class in test_classes:
-        class_tests = [t for t in suite if test_class in str(t)]
-        print(f"  {test_class}: {len(class_tests)} tests")
-    
-    print(f"{'='*60}")

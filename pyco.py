@@ -182,9 +182,6 @@ def asciitable():
             (i + 2), (i + 2), get_printable_char(i + 2),
             (i + 3), (i + 3), get_printable_char(i + 3)))
     return
-def at():
-    """Alias for asciitable() - Display ASCII table."""
-    return asciitable()
 
 def get_printable_char(char):
     """Return a printable character representation for the given ASCII code."""
@@ -208,103 +205,76 @@ def inputlist():
         _list.append(float(lastInput))
         inputCounter += 1
     return _list
-def il():
-    """Alias for inputlist() - Read a list of numbers."""
-    return inputlist()
 
 
 def average(list):
     """Calculate the average (mean) of a list of numbers."""
     return mean(list)
-def avg(list):
-    """Alias for average() - Calculate the average of a list."""
-    return average(list)
 
 def convert_celsius_fahrenheit(celsius):
     """Convert temperature from Celsius to Fahrenheit."""
     return (celsius * 9 / 5) + 32
-def c_c_f(celsius):
-    """Alias for convert_celsius_fahrenheit() - Convert Celsius to Fahrenheit."""
-    return convert_celsius_fahrenheit(celsius)
-def c_f(celsius):
-    """Short alias for convert_celsius_fahrenheit() - Convert Celsius to Fahrenheit."""
-    return c_c_f(celsius)
 
 def convert_fahrenheit_celsius(fahrenheit):
     """Convert temperature from Fahrenheit to Celsius."""
     return (fahrenheit - 32) * 5 / 9
-def c_f_c(fahrenheit):
-    """Alias for convert_fahrenheit_celsius() - Convert Fahrenheit to Celsius."""
-    return convert_fahrenheit_celsius(fahrenheit)
-def f_c(fahrenheit):
-    """Short alias for convert_fahrenheit_celsius() - Convert Fahrenheit to Celsius."""
-    return c_f_c(fahrenheit)
 
 def convert_miles_kilometers(miles):
     """Convert distance from miles to kilometers."""
     return miles * 1.609344
-def c_mi_km(miles):
-    """Alias for convert_miles_kilometers() - Convert miles to kilometers."""
-    return convert_miles_kilometers(miles)
-def mi_km(miles):
-    """Short alias for convert_miles_kilometers() - Convert miles to kilometers."""
-    return c_mi_km(miles)
 
 def convert_kilometers_miles(kilometers):
     """Convert distance from kilometers to miles."""
     return kilometers / 1.609344
-def c_km_mi(kilometers):
-    """Alias for convert_kilometers_miles() - Convert kilometers to miles."""
-    return convert_kilometers_miles(kilometers)
-def km_mi(kilometers):
-    """Short alias for convert_kilometers_miles() - Convert kilometers to miles."""
-    return c_km_mi(kilometers)
 
 def convert_miles_feet(miles):
     """Convert distance from miles to feet."""
     return miles * 5280
-def c_mi_ft(miles):
-    """Alias for convert_miles_feet() - Convert miles to feet."""
-    return convert_miles_feet(miles)
-def mi_ft(miles):
-    """Short alias for convert_miles_feet() - Convert miles to feet."""
-    return c_mi_ft(miles)
 
 def convert_feet_miles(feet):
     """Convert distance from feet to miles."""
     return feet / 5280
-def c_ft_mi(feet):
-    """Alias for convert_feet_miles() - Convert feet to miles."""
-    return convert_feet_miles(feet)
-def ft_mi(feet):
-    """Short alias for convert_feet_miles() - Convert feet to miles."""
-    return c_ft_mi(feet)
 
 def convert_inches_feet(inches):
     """Convert distance from inches to feet."""
     return inches / 12
-def c_in_ft(inches):
-    """Alias for convert_inches_feet() - Convert inches to feet."""
-    return convert_inches_feet(inches)
-def in_ft(inches):
-    """Short alias for convert_inches_feet() - Convert inches to feet."""
-    return c_in_ft(inches)
 
 def convert_feet_inches(feet):
     """Convert distance from feet to inches."""
     return feet * 12
-def c_ft_in(feet):
-    """Alias for convert_feet_inches() - Convert feet to inches."""
-    return convert_feet_inches(feet)
-def ft_in(feet):
-    """Short alias for convert_feet_inches() - Convert feet to inches."""
-    return c_ft_in(feet)
 
 def tally():
     """Count the number of characters in user input (useful for tallying)."""
     tallyCounter = input("Tally: ")
     return len(tallyCounter)
 
+# Generate aliases
+# Temperature conversions
+c_c_f = convert_celsius_fahrenheit
+c_f = convert_celsius_fahrenheit
+c_f_c = convert_fahrenheit_celsius
+f_c = convert_fahrenheit_celsius
+
+# Distance conversions
+c_mi_km = convert_miles_kilometers
+mi_km = convert_miles_kilometers
+c_km_mi = convert_kilometers_miles
+km_mi = convert_kilometers_miles
+c_mi_ft = convert_miles_feet
+mi_ft = convert_miles_feet
+c_ft_mi = convert_feet_miles
+ft_mi = convert_feet_miles
+c_in_ft = convert_inches_feet
+in_ft = convert_inches_feet
+c_ft_in = convert_feet_inches
+ft_in = convert_feet_inches
+
+# Other aliases
+at = asciitable
+il = inputlist
+avg = average
+
+# Define constants for data sizes
 kb = 1024
 mb = kb * kb
 gb = kb * mb
