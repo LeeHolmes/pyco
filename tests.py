@@ -1,5 +1,8 @@
 """
 Unit tests for pyco.py calculator functions.
+
+coverage run tests.py
+coverage report -m
 """
 
 import unittest
@@ -19,6 +22,9 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         self.assertIn('convert_celsius_fahrenheit', results)
         self.assertIn('convert_fahrenheit_celsius', results)
         self.assertIn('convert_miles_kilometers', results)
+        self.assertIn('convert_feet_centimeters', results)
+        self.assertIn('convert_pounds_kilograms', results)
+        self.assertIn('convert_ounces_milliliters', results)
         
         # Test finding functions that contain 'avg'
         results = pyco.find('avg')
@@ -34,6 +40,9 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         self.assertIn('convert_celsius_fahrenheit', results)
         self.assertIn('convert_fahrenheit_celsius', results)
         self.assertIn('convert_miles_kilometers', results)
+        self.assertIn('convert_feet_centimeters', results)
+        self.assertIn('convert_pounds_kilograms', results)
+        self.assertIn('convert_ounces_milliliters', results)
         
         # Suffix matching (ends with)
         results = pyco.find('*fahrenheit')
@@ -47,7 +56,10 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         
         # Test short aliases with wildcards
         results = pyco.find('c_*')
-        expected_aliases = ['c_c_f', 'c_f_c', 'c_mi_km', 'c_km_mi', 'c_mi_ft', 'c_ft_mi', 'c_in_ft', 'c_ft_in']
+        expected_aliases = ['c_c_f', 'c_f_c', 'c_mi_km', 'c_km_mi', 'c_mi_ft', 'c_ft_mi', 'c_in_ft', 'c_ft_in',
+                           'c_ft_cm', 'c_cm_ft', 'c_ft_m', 'c_m_ft', 'c_in_cm', 'c_cm_in',
+                           'c_lb_kg', 'c_kg_lb', 'c_oz_ml', 'c_ml_oz', 'c_cup_oz', 'c_oz_cup',
+                           'c_cup_ml', 'c_ml_cup']
         for alias in expected_aliases:
             self.assertIn(alias, results)
         
@@ -325,6 +337,239 @@ class TestPycoDistanceConversions(unittest.TestCase):
     def test_ft_in_alias(self):
         """Test ft_in alias for convert_feet_inches"""
         self.assertEqual(pyco.ft_in(1), 12)
+    
+    def test_convert_feet_centimeters(self):
+        """Test feet to centimeters conversion"""
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(1), 30.48)
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(2), 60.96)
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(0.5), 15.24)
+    
+    def test_c_ft_cm_alias(self):
+        """Test c_ft_cm alias for convert_feet_centimeters"""
+        self.assertAlmostEqual(pyco.c_ft_cm(1), 30.48)
+    
+    def test_ft_cm_alias(self):
+        """Test ft_cm alias for convert_feet_centimeters"""
+        self.assertAlmostEqual(pyco.ft_cm(1), 30.48)
+    
+    def test_convert_centimeters_feet(self):
+        """Test centimeters to feet conversion"""
+        self.assertAlmostEqual(pyco.convert_centimeters_feet(30.48), 1.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_feet(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_feet(60.96), 2.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_feet(15.24), 0.5)
+    
+    def test_c_cm_ft_alias(self):
+        """Test c_cm_ft alias for convert_centimeters_feet"""
+        self.assertAlmostEqual(pyco.c_cm_ft(30.48), 1.0)
+    
+    def test_cm_ft_alias(self):
+        """Test cm_ft alias for convert_centimeters_feet"""
+        self.assertAlmostEqual(pyco.cm_ft(30.48), 1.0)
+    
+    def test_convert_feet_meters(self):
+        """Test feet to meters conversion"""
+        self.assertAlmostEqual(pyco.convert_feet_meters(3), 0.9144)
+        self.assertAlmostEqual(pyco.convert_feet_meters(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_feet_meters(1), 0.3048)
+        # Test with inches parameter
+        self.assertAlmostEqual(pyco.convert_feet_meters(3, 6), 1.0668)
+        self.assertAlmostEqual(pyco.convert_feet_meters(0, 12), 0.3048)
+    
+    def test_c_ft_m_alias(self):
+        """Test c_ft_m alias for convert_feet_meters"""
+        self.assertAlmostEqual(pyco.c_ft_m(3), 0.9144)
+        self.assertAlmostEqual(pyco.c_ft_m(3, 6), 1.0668)
+    
+    def test_ft_m_alias(self):
+        """Test ft_m alias for convert_feet_meters"""
+        self.assertAlmostEqual(pyco.ft_m(3), 0.9144)
+        self.assertAlmostEqual(pyco.ft_m(3, 6), 1.0668)
+    
+    def test_convert_meters_feet(self):
+        """Test meters to feet conversion"""
+        feet, inches = pyco.convert_meters_feet(0.9144)
+        self.assertEqual(feet, 3)
+        self.assertAlmostEqual(inches, 0.0, places=10)
+        
+        feet, inches = pyco.convert_meters_feet(1.0668)
+        self.assertEqual(feet, 3)
+        self.assertAlmostEqual(inches, 6.0, places=10)
+        
+        feet, inches = pyco.convert_meters_feet(0)
+        self.assertEqual(feet, 0)
+        self.assertEqual(inches, 0.0)
+    
+    def test_c_m_ft_alias(self):
+        """Test c_m_ft alias for convert_meters_feet"""
+        feet, inches = pyco.c_m_ft(0.9144)
+        self.assertEqual(feet, 3)
+        self.assertAlmostEqual(inches, 0.0, places=10)
+    
+    def test_m_ft_alias(self):
+        """Test m_ft alias for convert_meters_feet"""
+        feet, inches = pyco.m_ft(0.9144)
+        self.assertEqual(feet, 3)
+        self.assertAlmostEqual(inches, 0.0, places=10)
+    
+    def test_convert_inches_centimeters(self):
+        """Test inches to centimeters conversion"""
+        self.assertAlmostEqual(pyco.convert_inches_centimeters(1), 2.54)
+        self.assertAlmostEqual(pyco.convert_inches_centimeters(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_inches_centimeters(12), 30.48)
+        self.assertAlmostEqual(pyco.convert_inches_centimeters(6), 15.24)
+    
+    def test_c_in_cm_alias(self):
+        """Test c_in_cm alias for convert_inches_centimeters"""
+        self.assertAlmostEqual(pyco.c_in_cm(1), 2.54)
+    
+    def test_in_cm_alias(self):
+        """Test in_cm alias for convert_inches_centimeters"""
+        self.assertAlmostEqual(pyco.in_cm(1), 2.54)
+    
+    def test_convert_centimeters_inches(self):
+        """Test centimeters to inches conversion"""
+        self.assertAlmostEqual(pyco.convert_centimeters_inches(2.54), 1.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_inches(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_inches(30.48), 12.0)
+        self.assertAlmostEqual(pyco.convert_centimeters_inches(15.24), 6.0)
+    
+    def test_c_cm_in_alias(self):
+        """Test c_cm_in alias for convert_centimeters_inches"""
+        self.assertAlmostEqual(pyco.c_cm_in(2.54), 1.0)
+    
+    def test_cm_in_alias(self):
+        """Test cm_in alias for convert_centimeters_inches"""
+        self.assertAlmostEqual(pyco.cm_in(2.54), 1.0)
+
+
+class TestPycoWeightConversions(unittest.TestCase):
+    """Test weight conversion functions in pyco.py"""
+    
+    def test_convert_pounds_kilograms(self):
+        """Test pounds to kilograms conversion"""
+        self.assertAlmostEqual(pyco.convert_pounds_kilograms(1), 0.453592)
+        self.assertAlmostEqual(pyco.convert_pounds_kilograms(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_pounds_kilograms(2.20462), 1.0, places=5)
+        self.assertAlmostEqual(pyco.convert_pounds_kilograms(100), 45.3592)
+    
+    def test_c_lb_kg_alias(self):
+        """Test c_lb_kg alias for convert_pounds_kilograms"""
+        self.assertAlmostEqual(pyco.c_lb_kg(1), 0.453592)
+    
+    def test_lb_kg_alias(self):
+        """Test lb_kg alias for convert_pounds_kilograms"""
+        self.assertAlmostEqual(pyco.lb_kg(1), 0.453592)
+    
+    def test_convert_kilograms_pounds(self):
+        """Test kilograms to pounds conversion"""
+        self.assertAlmostEqual(pyco.convert_kilograms_pounds(0.453592), 1.0)
+        self.assertAlmostEqual(pyco.convert_kilograms_pounds(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_kilograms_pounds(1), 2.20462, places=5)
+        self.assertAlmostEqual(pyco.convert_kilograms_pounds(45.3592), 100.0)
+    
+    def test_c_kg_lb_alias(self):
+        """Test c_kg_lb alias for convert_kilograms_pounds"""
+        self.assertAlmostEqual(pyco.c_kg_lb(0.453592), 1.0)
+    
+    def test_kg_lb_alias(self):
+        """Test kg_lb alias for convert_kilograms_pounds"""
+        self.assertAlmostEqual(pyco.kg_lb(0.453592), 1.0)
+
+
+class TestPycoVolumeConversions(unittest.TestCase):
+    """Test volume conversion functions in pyco.py"""
+    
+    def test_convert_ounces_milliliters(self):
+        """Test fluid ounces to milliliters conversion"""
+        self.assertAlmostEqual(pyco.convert_ounces_milliliters(1), 29.5735)
+        self.assertAlmostEqual(pyco.convert_ounces_milliliters(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_ounces_milliliters(8), 236.588)
+        self.assertAlmostEqual(pyco.convert_ounces_milliliters(0.5), 14.78675)
+    
+    def test_c_oz_ml_alias(self):
+        """Test c_oz_ml alias for convert_ounces_milliliters"""
+        self.assertAlmostEqual(pyco.c_oz_ml(1), 29.5735)
+    
+    def test_oz_ml_alias(self):
+        """Test oz_ml alias for convert_ounces_milliliters"""
+        self.assertAlmostEqual(pyco.oz_ml(1), 29.5735)
+    
+    def test_convert_milliliters_ounces(self):
+        """Test milliliters to fluid ounces conversion"""
+        self.assertAlmostEqual(pyco.convert_milliliters_ounces(29.5735), 1.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_ounces(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_ounces(236.588), 8.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_ounces(14.78675), 0.5)
+    
+    def test_c_ml_oz_alias(self):
+        """Test c_ml_oz alias for convert_milliliters_ounces"""
+        self.assertAlmostEqual(pyco.c_ml_oz(29.5735), 1.0)
+    
+    def test_ml_oz_alias(self):
+        """Test ml_oz alias for convert_milliliters_ounces"""
+        self.assertAlmostEqual(pyco.ml_oz(29.5735), 1.0)
+    
+    def test_convert_cups_ounces(self):
+        """Test cups to fluid ounces conversion"""
+        self.assertEqual(pyco.convert_cups_ounces(1), 8)
+        self.assertEqual(pyco.convert_cups_ounces(0), 0)
+        self.assertEqual(pyco.convert_cups_ounces(2), 16)
+        self.assertEqual(pyco.convert_cups_ounces(0.5), 4)
+    
+    def test_c_cup_oz_alias(self):
+        """Test c_cup_oz alias for convert_cups_ounces"""
+        self.assertEqual(pyco.c_cup_oz(1), 8)
+    
+    def test_cup_oz_alias(self):
+        """Test cup_oz alias for convert_cups_ounces"""
+        self.assertEqual(pyco.cup_oz(1), 8)
+    
+    def test_convert_ounces_cups(self):
+        """Test fluid ounces to cups conversion"""
+        self.assertEqual(pyco.convert_ounces_cups(8), 1.0)
+        self.assertEqual(pyco.convert_ounces_cups(0), 0.0)
+        self.assertEqual(pyco.convert_ounces_cups(16), 2.0)
+        self.assertEqual(pyco.convert_ounces_cups(4), 0.5)
+    
+    def test_c_oz_cup_alias(self):
+        """Test c_oz_cup alias for convert_ounces_cups"""
+        self.assertEqual(pyco.c_oz_cup(8), 1.0)
+    
+    def test_oz_cup_alias(self):
+        """Test oz_cup alias for convert_ounces_cups"""
+        self.assertEqual(pyco.oz_cup(8), 1.0)
+    
+    def test_convert_cups_milliliters(self):
+        """Test cups to milliliters conversion"""
+        self.assertAlmostEqual(pyco.convert_cups_milliliters(1), 236.588)
+        self.assertAlmostEqual(pyco.convert_cups_milliliters(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_cups_milliliters(2), 473.176)
+        self.assertAlmostEqual(pyco.convert_cups_milliliters(0.5), 118.294)
+    
+    def test_c_cup_ml_alias(self):
+        """Test c_cup_ml alias for convert_cups_milliliters"""
+        self.assertAlmostEqual(pyco.c_cup_ml(1), 236.588)
+    
+    def test_cup_ml_alias(self):
+        """Test cup_ml alias for convert_cups_milliliters"""
+        self.assertAlmostEqual(pyco.cup_ml(1), 236.588)
+    
+    def test_convert_milliliters_cups(self):
+        """Test milliliters to cups conversion"""
+        self.assertAlmostEqual(pyco.convert_milliliters_cups(236.588), 1.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_cups(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_cups(473.176), 2.0)
+        self.assertAlmostEqual(pyco.convert_milliliters_cups(118.294), 0.5)
+    
+    def test_c_ml_cup_alias(self):
+        """Test c_ml_cup alias for convert_milliliters_cups"""
+        self.assertAlmostEqual(pyco.c_ml_cup(236.588), 1.0)
+    
+    def test_ml_cup_alias(self):
+        """Test ml_cup alias for convert_milliliters_cups"""
+        self.assertAlmostEqual(pyco.ml_cup(236.588), 1.0)
 
 
 class TestPycoConstants(unittest.TestCase):
@@ -374,6 +619,46 @@ class TestPycoConversionChains(unittest.TestCase):
         inches = pyco.convert_feet_inches(feet)
         back_to_feet = pyco.convert_inches_feet(inches)
         self.assertAlmostEqual(feet, back_to_feet, places=10)
+        
+        # Test feet -> centimeters -> feet
+        feet = 5.0
+        centimeters = pyco.convert_feet_centimeters(feet)
+        back_to_feet = pyco.convert_centimeters_feet(centimeters)
+        self.assertAlmostEqual(feet, back_to_feet, places=10)
+        
+        # Test inches -> centimeters -> inches
+        inches = 12.0
+        centimeters = pyco.convert_inches_centimeters(inches)
+        back_to_inches = pyco.convert_centimeters_inches(centimeters)
+        self.assertAlmostEqual(inches, back_to_inches, places=10)
+    
+    def test_weight_conversion_chain(self):
+        """Test that weight conversions are mathematically consistent"""
+        # Test pounds -> kg -> pounds
+        pounds = 150.0
+        kilograms = pyco.convert_pounds_kilograms(pounds)
+        back_to_pounds = pyco.convert_kilograms_pounds(kilograms)
+        self.assertAlmostEqual(pounds, back_to_pounds, places=10)
+    
+    def test_volume_conversion_chain(self):
+        """Test that volume conversions are mathematically consistent"""
+        # Test ounces -> milliliters -> ounces
+        ounces = 16.0
+        milliliters = pyco.convert_ounces_milliliters(ounces)
+        back_to_ounces = pyco.convert_milliliters_ounces(milliliters)
+        self.assertAlmostEqual(ounces, back_to_ounces, places=10)
+        
+        # Test cups -> ounces -> cups
+        cups = 2.0
+        ounces = pyco.convert_cups_ounces(cups)
+        back_to_cups = pyco.convert_ounces_cups(ounces)
+        self.assertAlmostEqual(cups, back_to_cups, places=10)
+        
+        # Test cups -> milliliters -> cups
+        cups = 3.0
+        milliliters = pyco.convert_cups_milliliters(cups)
+        back_to_cups = pyco.convert_milliliters_cups(milliliters)
+        self.assertAlmostEqual(cups, back_to_cups, places=10)
 
 
 class TestPycoEdgeCases(unittest.TestCase):
@@ -389,6 +674,20 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertEqual(pyco.convert_feet_miles(0), 0.0)
         self.assertEqual(pyco.convert_inches_feet(0), 0.0)
         self.assertEqual(pyco.convert_feet_inches(0), 0)
+        # New conversion functions
+        self.assertEqual(pyco.convert_feet_centimeters(0), 0.0)
+        self.assertEqual(pyco.convert_centimeters_feet(0), 0.0)
+        self.assertEqual(pyco.convert_feet_meters(0), 0.0)
+        self.assertEqual(pyco.convert_inches_centimeters(0), 0.0)
+        self.assertEqual(pyco.convert_centimeters_inches(0), 0.0)
+        self.assertEqual(pyco.convert_pounds_kilograms(0), 0.0)
+        self.assertEqual(pyco.convert_kilograms_pounds(0), 0.0)
+        self.assertEqual(pyco.convert_ounces_milliliters(0), 0.0)
+        self.assertEqual(pyco.convert_milliliters_ounces(0), 0.0)
+        self.assertEqual(pyco.convert_cups_ounces(0), 0)
+        self.assertEqual(pyco.convert_ounces_cups(0), 0.0)
+        self.assertEqual(pyco.convert_cups_milliliters(0), 0.0)
+        self.assertEqual(pyco.convert_milliliters_cups(0), 0.0)
     
     def test_negative_conversions(self):
         """Test conversions with negative values"""
@@ -396,6 +695,18 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertEqual(pyco.convert_fahrenheit_celsius(-10), -23.333333333333332)
         self.assertEqual(pyco.convert_miles_kilometers(-5), -8.04672)
         self.assertEqual(pyco.convert_kilometers_miles(-8.04672), -5.0)
+        # New conversion functions with negative values
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(-3), -91.44)
+        self.assertAlmostEqual(pyco.convert_centimeters_feet(-30.48), -1.0)
+        self.assertAlmostEqual(pyco.convert_inches_centimeters(-6), -15.24)
+        self.assertAlmostEqual(pyco.convert_centimeters_inches(-15.24), -6.0)
+        # Weight and volume with negative values (though physically meaningless)
+        self.assertAlmostEqual(pyco.convert_pounds_kilograms(-10), -4.53592)
+        self.assertAlmostEqual(pyco.convert_kilograms_pounds(-5), -11.0231221)
+        self.assertAlmostEqual(pyco.convert_ounces_milliliters(-8), -236.588)
+        self.assertAlmostEqual(pyco.convert_milliliters_ounces(-236.588), -8.0)
+        self.assertEqual(pyco.convert_cups_ounces(-2), -16)
+        self.assertEqual(pyco.convert_ounces_cups(-16), -2.0)
     
     def test_large_number_conversions(self):
         """Test conversions with large numbers"""
@@ -407,6 +718,19 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertGreater(result, large_num)
         
         result = pyco.convert_miles_kilometers(large_num)
+        self.assertIsInstance(result, float)
+        self.assertGreater(result, large_num)
+        
+        # Test new conversion functions with large numbers
+        result = pyco.convert_feet_centimeters(large_num)
+        self.assertIsInstance(result, float)
+        self.assertGreater(result, large_num)
+        
+        result = pyco.convert_pounds_kilograms(large_num)
+        self.assertIsInstance(result, float)
+        self.assertLess(result, large_num)  # kg is smaller unit
+        
+        result = pyco.convert_ounces_milliliters(large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
 
@@ -492,6 +816,119 @@ class TestPycoAliases(unittest.TestCase):
         result1 = pyco.convert_feet_inches(feet)
         result2 = pyco.c_ft_in(feet)
         result3 = pyco.ft_in(feet)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test new distance conversion aliases
+        # Test feet to centimeters aliases
+        result1 = pyco.convert_feet_centimeters(feet)
+        result2 = pyco.c_ft_cm(feet)
+        result3 = pyco.ft_cm(feet)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        centimeters = 91.44
+        
+        # Test centimeters to feet aliases
+        result1 = pyco.convert_centimeters_feet(centimeters)
+        result2 = pyco.c_cm_ft(centimeters)
+        result3 = pyco.cm_ft(centimeters)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test feet to meters aliases
+        result1 = pyco.convert_feet_meters(feet)
+        result2 = pyco.c_ft_m(feet)
+        result3 = pyco.ft_m(feet)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test inches to centimeters aliases
+        result1 = pyco.convert_inches_centimeters(inches)
+        result2 = pyco.c_in_cm(inches)
+        result3 = pyco.in_cm(inches)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+    
+    def test_all_weight_aliases(self):
+        """Test that all weight conversion aliases produce same results"""
+        pounds = 10.0
+        
+        # Test pounds to kilograms aliases
+        result1 = pyco.convert_pounds_kilograms(pounds)
+        result2 = pyco.c_lb_kg(pounds)
+        result3 = pyco.lb_kg(pounds)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        kilograms = 4.53592
+        
+        # Test kilograms to pounds aliases
+        result1 = pyco.convert_kilograms_pounds(kilograms)
+        result2 = pyco.c_kg_lb(kilograms)
+        result3 = pyco.kg_lb(kilograms)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+    
+    def test_all_volume_aliases(self):
+        """Test that all volume conversion aliases produce same results"""
+        ounces = 16.0
+        
+        # Test ounces to milliliters aliases
+        result1 = pyco.convert_ounces_milliliters(ounces)
+        result2 = pyco.c_oz_ml(ounces)
+        result3 = pyco.oz_ml(ounces)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        milliliters = 473.176
+        
+        # Test milliliters to ounces aliases
+        result1 = pyco.convert_milliliters_ounces(milliliters)
+        result2 = pyco.c_ml_oz(milliliters)
+        result3 = pyco.ml_oz(milliliters)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        cups = 2.0
+        
+        # Test cups to ounces aliases
+        result1 = pyco.convert_cups_ounces(cups)
+        result2 = pyco.c_cup_oz(cups)
+        result3 = pyco.cup_oz(cups)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test ounces to cups aliases
+        result1 = pyco.convert_ounces_cups(ounces)
+        result2 = pyco.c_oz_cup(ounces)
+        result3 = pyco.oz_cup(ounces)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test cups to milliliters aliases
+        result1 = pyco.convert_cups_milliliters(cups)
+        result2 = pyco.c_cup_ml(cups)
+        result3 = pyco.cup_ml(cups)
+        
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+        
+        # Test milliliters to cups aliases
+        result1 = pyco.convert_milliliters_cups(milliliters)
+        result2 = pyco.c_ml_cup(milliliters)
+        result3 = pyco.ml_cup(milliliters)
         
         self.assertEqual(result1, result2)
         self.assertEqual(result2, result3)
