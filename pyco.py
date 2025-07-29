@@ -1,11 +1,12 @@
 # pyco calculator customizations
 import sys
 import math
-import statistics
 from math import *
-from statistics import *
 
 if sys.implementation.name == 'cpython':
+    import statistics
+    from statistics import *
+
     def displayhook(value):
         if callable(value):
             displayhook(value())
