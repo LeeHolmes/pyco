@@ -344,29 +344,50 @@ class TestPycoDistanceConversions(unittest.TestCase):
         self.assertAlmostEqual(pyco.convert_feet_centimeters(0), 0.0)
         self.assertAlmostEqual(pyco.convert_feet_centimeters(2), 60.96)
         self.assertAlmostEqual(pyco.convert_feet_centimeters(0.5), 15.24)
+        # Test with inches parameter
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(1, 6), 45.72)
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(0, 12), 30.48)
+        self.assertAlmostEqual(pyco.convert_feet_centimeters(2, 3), 68.58)
     
     def test_c_ft_cm_alias(self):
         """Test c_ft_cm alias for convert_feet_centimeters"""
         self.assertAlmostEqual(pyco.c_ft_cm(1), 30.48)
+        self.assertAlmostEqual(pyco.c_ft_cm(1, 6), 45.72)
     
     def test_ft_cm_alias(self):
         """Test ft_cm alias for convert_feet_centimeters"""
         self.assertAlmostEqual(pyco.ft_cm(1), 30.48)
+        self.assertAlmostEqual(pyco.ft_cm(1, 6), 45.72)
     
     def test_convert_centimeters_feet(self):
         """Test centimeters to feet conversion"""
-        self.assertAlmostEqual(pyco.convert_centimeters_feet(30.48), 1.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_feet(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_feet(60.96), 2.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_feet(15.24), 0.5)
+        feet, inches = pyco.convert_centimeters_feet(30.48)
+        self.assertEqual(feet, 1)
+        self.assertAlmostEqual(inches, 0.0, places=10)
+        
+        feet, inches = pyco.convert_centimeters_feet(45.72)
+        self.assertEqual(feet, 1)
+        self.assertAlmostEqual(inches, 6.0, places=10)
+        
+        feet, inches = pyco.convert_centimeters_feet(0)
+        self.assertEqual(feet, 0)
+        self.assertEqual(inches, 0.0)
+        
+        feet, inches = pyco.convert_centimeters_feet(60.96)
+        self.assertEqual(feet, 2)
+        self.assertAlmostEqual(inches, 0.0, places=10)
     
     def test_c_cm_ft_alias(self):
         """Test c_cm_ft alias for convert_centimeters_feet"""
-        self.assertAlmostEqual(pyco.c_cm_ft(30.48), 1.0)
+        feet, inches = pyco.c_cm_ft(30.48)
+        self.assertEqual(feet, 1)
+        self.assertAlmostEqual(inches, 0.0, places=10)
     
     def test_cm_ft_alias(self):
         """Test cm_ft alias for convert_centimeters_feet"""
-        self.assertAlmostEqual(pyco.cm_ft(30.48), 1.0)
+        feet, inches = pyco.cm_ft(30.48)
+        self.assertEqual(feet, 1)
+        self.assertAlmostEqual(inches, 0.0, places=10)
     
     def test_convert_feet_meters(self):
         """Test feet to meters conversion"""
@@ -623,7 +644,8 @@ class TestPycoConversionChains(unittest.TestCase):
         # Test feet -> centimeters -> feet
         feet = 5.0
         centimeters = pyco.convert_feet_centimeters(feet)
-        back_to_feet = pyco.convert_centimeters_feet(centimeters)
+        back_to_feet_tuple = pyco.convert_centimeters_feet(centimeters)
+        back_to_feet = back_to_feet_tuple[0] + (back_to_feet_tuple[1] / 12)  # Convert back to decimal feet
         self.assertAlmostEqual(feet, back_to_feet, places=10)
         
         # Test inches -> centimeters -> inches
@@ -676,7 +698,9 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertEqual(pyco.convert_feet_inches(0), 0)
         # New conversion functions
         self.assertEqual(pyco.convert_feet_centimeters(0), 0.0)
-        self.assertEqual(pyco.convert_centimeters_feet(0), 0.0)
+        feet, inches = pyco.convert_centimeters_feet(0)
+        self.assertEqual(feet, 0)
+        self.assertEqual(inches, 0.0)
         self.assertEqual(pyco.convert_feet_meters(0), 0.0)
         self.assertEqual(pyco.convert_inches_centimeters(0), 0.0)
         self.assertEqual(pyco.convert_centimeters_inches(0), 0.0)
@@ -697,7 +721,9 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertEqual(pyco.convert_kilometers_miles(-8.04672), -5.0)
         # New conversion functions with negative values
         self.assertAlmostEqual(pyco.convert_feet_centimeters(-3), -91.44)
-        self.assertAlmostEqual(pyco.convert_centimeters_feet(-30.48), -1.0)
+        feet, inches = pyco.convert_centimeters_feet(-30.48)
+        self.assertEqual(feet, -1)
+        self.assertAlmostEqual(inches, 0.0, places=10)
         self.assertAlmostEqual(pyco.convert_inches_centimeters(-6), -15.24)
         self.assertAlmostEqual(pyco.convert_centimeters_inches(-15.24), -6.0)
         # Weight and volume with negative values (though physically meaningless)

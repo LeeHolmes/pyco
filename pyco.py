@@ -244,13 +244,17 @@ def convert_feet_inches(feet):
     """Convert distance from feet to inches."""
     return feet * 12
 
-def convert_feet_centimeters(feet):
-    """Convert distance from feet to centimeters."""
-    return feet * 30.48
+def convert_feet_centimeters(feet, inches=0):
+    """Convert distance from feet (and optional inches) to centimeters."""
+    total_inches = (feet * 12) + inches
+    return total_inches * 2.54
 
 def convert_centimeters_feet(centimeters):
-    """Convert distance from centimeters to feet."""
-    return centimeters / 30.48
+    """Convert distance from centimeters to feet (returns tuple of feet, inches)."""
+    total_inches = centimeters / 2.54
+    feet = int(total_inches // 12)
+    inches = total_inches % 12
+    return (feet, inches)
 
 def convert_feet_meters(feet, inches=0):
     """Convert distance from feet (and optional inches) to meters."""
