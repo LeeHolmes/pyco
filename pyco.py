@@ -308,6 +308,46 @@ def convert_milliliters_cups(milliliters):
     """Convert volume from milliliters to cups."""
     return milliliters / 236.588
 
+def convert_mph_kph(mph):
+    """Convert speed from miles per hour to kilometers per hour."""
+    return mph * 1.609344
+
+def convert_kph_mph(kph):
+    """Convert speed from kilometers per hour to miles per hour."""
+    return kph / 1.609344
+
+def convert_knots_mph(knots):
+    """Convert speed from knots to miles per hour."""
+    return knots * 1.15078
+
+def convert_mph_knots(mph):
+    """Convert speed from miles per hour to knots."""
+    return mph / 1.15078
+
+def convert_knots_kph(knots):
+    """Convert speed from knots to kilometers per hour."""
+    return knots * 1.852
+
+def convert_kph_knots(kph):
+    """Convert speed from kilometers per hour to knots."""
+    return kph / 1.852
+
+def convert_mph_mps(mph):
+    """Convert speed from miles per hour to meters per second."""
+    return mph * 0.44704
+
+def convert_mps_mph(mps):
+    """Convert speed from meters per second to miles per hour."""
+    return mps / 0.44704
+
+def convert_kph_mps(kph):
+    """Convert speed from kilometers per hour to meters per second."""
+    return kph * 0.277778
+
+def convert_mps_kph(mps):
+    """Convert speed from meters per second to kilometers per hour."""
+    return mps / 0.277778
+
 def tally():
     """Count the number of characters in user input (useful for tallying)."""
     tallyCounter = input("Tally: ")
@@ -365,6 +405,28 @@ c_cup_ml = convert_cups_milliliters
 cup_ml = convert_cups_milliliters
 c_ml_cup = convert_milliliters_cups
 ml_cup = convert_milliliters_cups
+
+# Speed conversions
+c_mph_kph = convert_mph_kph
+mph_kph = convert_mph_kph
+c_kph_mph = convert_kph_mph
+kph_mph = convert_kph_mph
+c_knots_mph = convert_knots_mph
+knots_mph = convert_knots_mph
+c_mph_knots = convert_mph_knots
+mph_knots = convert_mph_knots
+c_knots_kph = convert_knots_kph
+knots_kph = convert_knots_kph
+c_kph_knots = convert_kph_knots
+kph_knots = convert_kph_knots
+c_mph_mps = convert_mph_mps
+mph_mps = convert_mph_mps
+c_mps_mph = convert_mps_mph
+mps_mph = convert_mps_mph
+c_kph_mps = convert_kph_mps
+kph_mps = convert_kph_mps
+c_mps_kph = convert_mps_kph
+mps_kph = convert_mps_kph
 
 # Other aliases
 at = asciitable

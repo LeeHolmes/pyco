@@ -593,6 +593,160 @@ class TestPycoVolumeConversions(unittest.TestCase):
         self.assertAlmostEqual(pyco.ml_cup(236.588), 1.0)
 
 
+class TestPycoSpeedConversions(unittest.TestCase):
+    """Test speed conversion functions in pyco.py"""
+    
+    def test_convert_mph_kph(self):
+        """Test miles per hour to kilometers per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_mph_kph(1), 1.609344)
+        self.assertAlmostEqual(pyco.convert_mph_kph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_mph_kph(60), 96.56064)
+        self.assertAlmostEqual(pyco.convert_mph_kph(100), 160.9344)
+    
+    def test_c_mph_kph_alias(self):
+        """Test c_mph_kph alias for convert_mph_kph"""
+        self.assertAlmostEqual(pyco.c_mph_kph(1), 1.609344)
+    
+    def test_mph_kph_alias(self):
+        """Test mph_kph alias for convert_mph_kph"""
+        self.assertAlmostEqual(pyco.mph_kph(1), 1.609344)
+    
+    def test_convert_kph_mph(self):
+        """Test kilometers per hour to miles per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_kph_mph(1.609344), 1.0)
+        self.assertAlmostEqual(pyco.convert_kph_mph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_kph_mph(96.5606), 60.0, places=4)
+        self.assertAlmostEqual(pyco.convert_kph_mph(160.9344), 100.0)
+    
+    def test_c_kph_mph_alias(self):
+        """Test c_kph_mph alias for convert_kph_mph"""
+        self.assertAlmostEqual(pyco.c_kph_mph(1.609344), 1.0)
+    
+    def test_kph_mph_alias(self):
+        """Test kph_mph alias for convert_kph_mph"""
+        self.assertAlmostEqual(pyco.kph_mph(1.609344), 1.0)
+    
+    def test_convert_knots_mph(self):
+        """Test knots to miles per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_knots_mph(1), 1.15078)
+        self.assertAlmostEqual(pyco.convert_knots_mph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_knots_mph(10), 11.5078)
+        self.assertAlmostEqual(pyco.convert_knots_mph(100), 115.078)
+    
+    def test_c_knots_mph_alias(self):
+        """Test c_knots_mph alias for convert_knots_mph"""
+        self.assertAlmostEqual(pyco.c_knots_mph(1), 1.15078)
+    
+    def test_knots_mph_alias(self):
+        """Test knots_mph alias for convert_knots_mph"""
+        self.assertAlmostEqual(pyco.knots_mph(1), 1.15078)
+    
+    def test_convert_mph_knots(self):
+        """Test miles per hour to knots conversion"""
+        self.assertAlmostEqual(pyco.convert_mph_knots(1.15078), 1.0)
+        self.assertAlmostEqual(pyco.convert_mph_knots(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_mph_knots(11.5078), 10.0, places=4)
+        self.assertAlmostEqual(pyco.convert_mph_knots(115.078), 100.0, places=4)
+    
+    def test_c_mph_knots_alias(self):
+        """Test c_mph_knots alias for convert_mph_knots"""
+        self.assertAlmostEqual(pyco.c_mph_knots(1.15078), 1.0)
+    
+    def test_mph_knots_alias(self):
+        """Test mph_knots alias for convert_mph_knots"""
+        self.assertAlmostEqual(pyco.mph_knots(1.15078), 1.0)
+    
+    def test_convert_knots_kph(self):
+        """Test knots to kilometers per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_knots_kph(1), 1.852)
+        self.assertAlmostEqual(pyco.convert_knots_kph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_knots_kph(10), 18.52)
+        self.assertAlmostEqual(pyco.convert_knots_kph(100), 185.2)
+    
+    def test_c_knots_kph_alias(self):
+        """Test c_knots_kph alias for convert_knots_kph"""
+        self.assertAlmostEqual(pyco.c_knots_kph(1), 1.852)
+    
+    def test_knots_kph_alias(self):
+        """Test knots_kph alias for convert_knots_kph"""
+        self.assertAlmostEqual(pyco.knots_kph(1), 1.852)
+    
+    def test_convert_kph_knots(self):
+        """Test kilometers per hour to knots conversion"""
+        self.assertAlmostEqual(pyco.convert_kph_knots(1.852), 1.0)
+        self.assertAlmostEqual(pyco.convert_kph_knots(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_kph_knots(18.52), 10.0, places=4)
+        self.assertAlmostEqual(pyco.convert_kph_knots(185.2), 100.0, places=4)
+    
+    def test_c_kph_knots_alias(self):
+        """Test c_kph_knots alias for convert_kph_knots"""
+        self.assertAlmostEqual(pyco.c_kph_knots(1.852), 1.0)
+    
+    def test_kph_knots_alias(self):
+        """Test kph_knots alias for convert_kph_knots"""
+        self.assertAlmostEqual(pyco.kph_knots(1.852), 1.0)
+    
+    def test_convert_mph_mps(self):
+        """Test miles per hour to meters per second conversion"""
+        self.assertAlmostEqual(pyco.convert_mph_mps(1), 0.44704)
+        self.assertAlmostEqual(pyco.convert_mph_mps(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_mph_mps(60), 26.8224)
+        self.assertAlmostEqual(pyco.convert_mph_mps(100), 44.704)
+    
+    def test_c_mph_mps_alias(self):
+        """Test c_mph_mps alias for convert_mph_mps"""
+        self.assertAlmostEqual(pyco.c_mph_mps(1), 0.44704)
+    
+    def test_mph_mps_alias(self):
+        """Test mph_mps alias for convert_mph_mps"""
+        self.assertAlmostEqual(pyco.mph_mps(1), 0.44704)
+    
+    def test_convert_mps_mph(self):
+        """Test meters per second to miles per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_mps_mph(0.44704), 1.0)
+        self.assertAlmostEqual(pyco.convert_mps_mph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_mps_mph(26.8224), 60.0, places=4)
+        self.assertAlmostEqual(pyco.convert_mps_mph(44.704), 100.0, places=4)
+    
+    def test_c_mps_mph_alias(self):
+        """Test c_mps_mph alias for convert_mps_mph"""
+        self.assertAlmostEqual(pyco.c_mps_mph(0.44704), 1.0)
+    
+    def test_mps_mph_alias(self):
+        """Test mps_mph alias for convert_mps_mph"""
+        self.assertAlmostEqual(pyco.mps_mph(0.44704), 1.0)
+    
+    def test_convert_kph_mps(self):
+        """Test kilometers per hour to meters per second conversion"""
+        self.assertAlmostEqual(pyco.convert_kph_mps(1), 0.277778, places=6)
+        self.assertAlmostEqual(pyco.convert_kph_mps(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_kph_mps(36), 10.0, places=3)
+        self.assertAlmostEqual(pyco.convert_kph_mps(100), 27.7778, places=4)
+    
+    def test_c_kph_mps_alias(self):
+        """Test c_kph_mps alias for convert_kph_mps"""
+        self.assertAlmostEqual(pyco.c_kph_mps(1), 0.277778, places=6)
+    
+    def test_kph_mps_alias(self):
+        """Test kph_mps alias for convert_kph_mps"""
+        self.assertAlmostEqual(pyco.kph_mps(1), 0.277778, places=6)
+    
+    def test_convert_mps_kph(self):
+        """Test meters per second to kilometers per hour conversion"""
+        self.assertAlmostEqual(pyco.convert_mps_kph(0.277778), 1.0, places=5)
+        self.assertAlmostEqual(pyco.convert_mps_kph(0), 0.0)
+        self.assertAlmostEqual(pyco.convert_mps_kph(10), 36.0, places=4)
+        self.assertAlmostEqual(pyco.convert_mps_kph(27.7778), 100.0, places=4)
+    
+    def test_c_mps_kph_alias(self):
+        """Test c_mps_kph alias for convert_mps_kph"""
+        self.assertAlmostEqual(pyco.c_mps_kph(0.277778), 1.0, places=5)
+    
+    def test_mps_kph_alias(self):
+        """Test mps_kph alias for convert_mps_kph"""
+        self.assertAlmostEqual(pyco.mps_kph(0.277778), 1.0, places=5)
+
+
 class TestPycoConstants(unittest.TestCase):
     """Test constants defined in pyco.py"""
     
@@ -681,6 +835,38 @@ class TestPycoConversionChains(unittest.TestCase):
         milliliters = pyco.convert_cups_milliliters(cups)
         back_to_cups = pyco.convert_milliliters_cups(milliliters)
         self.assertAlmostEqual(cups, back_to_cups, places=10)
+    
+    def test_speed_conversion_chain(self):
+        """Test that speed conversions are mathematically consistent"""
+        # Test mph -> kph -> mph
+        mph = 60.0
+        kph = pyco.convert_mph_kph(mph)
+        back_to_mph = pyco.convert_kph_mph(kph)
+        self.assertAlmostEqual(mph, back_to_mph, places=10)
+        
+        # Test knots -> mph -> knots
+        knots = 100.0
+        mph = pyco.convert_knots_mph(knots)
+        back_to_knots = pyco.convert_mph_knots(mph)
+        self.assertAlmostEqual(knots, back_to_knots, places=10)
+        
+        # Test knots -> kph -> knots
+        knots = 50.0
+        kph = pyco.convert_knots_kph(knots)
+        back_to_knots = pyco.convert_kph_knots(kph)
+        self.assertAlmostEqual(knots, back_to_knots, places=10)
+        
+        # Test mph -> mps -> mph
+        mph = 100.0
+        mps = pyco.convert_mph_mps(mph)
+        back_to_mph = pyco.convert_mps_mph(mps)
+        self.assertAlmostEqual(mph, back_to_mph, places=10)
+        
+        # Test kph -> mps -> kph
+        kph = 72.0
+        mps = pyco.convert_kph_mps(kph)
+        back_to_kph = pyco.convert_mps_kph(mps)
+        self.assertAlmostEqual(kph, back_to_kph, places=10)
 
 
 class TestPycoEdgeCases(unittest.TestCase):
@@ -712,6 +898,17 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertEqual(pyco.convert_ounces_cups(0), 0.0)
         self.assertEqual(pyco.convert_cups_milliliters(0), 0.0)
         self.assertEqual(pyco.convert_milliliters_cups(0), 0.0)
+        # Speed conversion functions
+        self.assertEqual(pyco.convert_mph_kph(0), 0.0)
+        self.assertEqual(pyco.convert_kph_mph(0), 0.0)
+        self.assertEqual(pyco.convert_knots_mph(0), 0.0)
+        self.assertEqual(pyco.convert_mph_knots(0), 0.0)
+        self.assertEqual(pyco.convert_knots_kph(0), 0.0)
+        self.assertEqual(pyco.convert_kph_knots(0), 0.0)
+        self.assertEqual(pyco.convert_mph_mps(0), 0.0)
+        self.assertEqual(pyco.convert_mps_mph(0), 0.0)
+        self.assertEqual(pyco.convert_kph_mps(0), 0.0)
+        self.assertEqual(pyco.convert_mps_kph(0), 0.0)
     
     def test_negative_conversions(self):
         """Test conversions with negative values"""
@@ -733,6 +930,17 @@ class TestPycoEdgeCases(unittest.TestCase):
         self.assertAlmostEqual(pyco.convert_milliliters_ounces(-236.588), -8.0)
         self.assertEqual(pyco.convert_cups_ounces(-2), -16)
         self.assertEqual(pyco.convert_ounces_cups(-16), -2.0)
+        # Speed conversions with negative values (though physically meaningless for speeds)
+        self.assertAlmostEqual(pyco.convert_mph_kph(-60), -96.56064)
+        self.assertAlmostEqual(pyco.convert_kph_mph(-100), -62.1371, places=4)
+        self.assertAlmostEqual(pyco.convert_knots_mph(-10), -11.5078)
+        self.assertAlmostEqual(pyco.convert_mph_knots(-115.078), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert_knots_kph(-50), -92.6)
+        self.assertAlmostEqual(pyco.convert_kph_knots(-185.2), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert_mph_mps(-60), -26.8224)
+        self.assertAlmostEqual(pyco.convert_mps_mph(-44.704), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert_kph_mps(-36), -10.0, places=3)
+        self.assertAlmostEqual(pyco.convert_mps_kph(-10), -36.0, places=4)
     
     def test_large_number_conversions(self):
         """Test conversions with large numbers"""
@@ -759,6 +967,19 @@ class TestPycoEdgeCases(unittest.TestCase):
         result = pyco.convert_ounces_milliliters(large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
+        
+        # Test speed conversion functions with large numbers
+        result = pyco.convert_mph_kph(large_num)
+        self.assertIsInstance(result, float)
+        self.assertGreater(result, large_num)
+        
+        result = pyco.convert_knots_mph(large_num)
+        self.assertIsInstance(result, float)
+        self.assertGreater(result, large_num)
+        
+        result = pyco.convert_mph_mps(large_num)
+        self.assertIsInstance(result, float)
+        self.assertLess(result, large_num)  # m/s is smaller unit than mph
 
 
 class TestPycoAliases(unittest.TestCase):
