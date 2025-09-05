@@ -361,7 +361,7 @@ def human(number):
         
     Returns:
         dict: A dictionary with the major constituents, e.g.:
-              {'million': 1, 'thousand': 234, 'hundred': 567} for 1,234,567
+              {'million': 1, 'thousand': 234, 'one': 567} for 1,234,567
     """
     # Convert to integer if it's a float (remove decimal part)
     num = int(abs(number))
