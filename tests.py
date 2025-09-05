@@ -214,6 +214,35 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         # This should raise an exception when trying to convert 'invalid' to float
         with self.assertRaises(ValueError):
             pyco.inputlist()
+
+    def test_human_large_numbers(self):
+        """Test human function with large numbers"""
+        # Test billions and trillions
+        result = pyco.human(1234567890)
+        expected = {'billion': 1, 'million': 234, 'thousand': 567, 'one': 890}
+        self.assertEqual(result, expected)
+        
+        # Test exact units
+        self.assertEqual(pyco.human(1000000000), {'billion': 1})
+        self.assertEqual(pyco.human(1000000000000), {'trillion': 1})
+
+    def test_human_edge_cases(self):
+        """Test human function with edge cases"""
+        # Test negative numbers (should use absolute value)
+        result = pyco.human(-1234567)
+        expected = {'million': 1, 'thousand': 234, 'one': 567}
+        self.assertEqual(result, expected)
+        
+        # Test float inputs (should convert to int)
+        result = pyco.human(1234567.89)
+        expected = {'million': 1, 'thousand': 234, 'one': 567}
+        self.assertEqual(result, expected)
+
+    def test_human_small_numbers(self):
+        """Test human function with small numbers"""
+        # Test single digits
+        for i in range(1, 10):
+            self.assertEqual(pyco.human(i), {'one': i})
     
 class TestPycoStatisticsFunctions(unittest.TestCase):
     """Test statistics functions in pyco.py"""
@@ -756,6 +785,13 @@ class TestPycoConstants(unittest.TestCase):
         self.assertEqual(pyco.mb, 1024 * 1024)
         self.assertEqual(pyco.gb, 1024 * 1024 * 1024)
         self.assertEqual(pyco.tb, 1024 * 1024 * 1024 * 1024)
+
+    def test_large_number_constants(self):
+        """Test that large number constants have correct values."""
+        self.assertEqual(pyco.thousand, 1000)
+        self.assertEqual(pyco.million, 1000000)
+        self.assertEqual(pyco.billion, 1000000000)
+        self.assertEqual(pyco.trillion, 1000000000000)
 
 
 class TestPycoConversionChains(unittest.TestCase):

@@ -353,6 +353,49 @@ def tally():
     tallyCounter = input("Tally: ")
     return len(tallyCounter)
 
+def human(number):
+    """Break down a number into its major constituents (trillions, billions, millions, etc.).
+    
+    Args:
+        number: The number to break down (int or float)
+        
+    Returns:
+        dict: A dictionary with the major constituents, e.g.:
+              {'million': 1, 'thousand': 234, 'hundred': 567} for 1,234,567
+    """
+    # Convert to integer if it's a float (remove decimal part)
+    num = int(abs(number))
+    
+    if num == 0:
+        return {'zero': 0}
+    
+    result = {}
+    
+    # Define the units in descending order
+    units = [
+        ('trillion', 1_000_000_000_000),
+        ('billion', 1_000_000_000),
+        ('million', 1_000_000),
+        ('thousand', 1_000),
+        ('one', 1)
+    ]
+    
+    for unit_name, unit_value in units:
+        if num >= unit_value:
+            count = num // unit_value
+            num = num % unit_value
+            
+            result[unit_name] = count
+    
+    # Handle special case where number is less than 100
+    if not result and num > 0:
+        if num >= 10:
+            result['ten'] = num
+        else:
+            result['one'] = num
+    
+    return result
+
 # Generate aliases
 # Temperature conversions
 c_c_f = convert_celsius_fahrenheit
@@ -438,6 +481,12 @@ kb = 1024
 mb = kb * kb
 gb = kb * mb
 tb = kb * gb
+
+# Define constants for large numbers
+thousand = 1_000
+million = 1_000_000
+billion = 1_000_000_000
+trillion = 1_000_000_000_000
 
 print("""
              ┌────────────┐
