@@ -387,13 +387,6 @@ def human(number):
             
             result[unit_name] = count
     
-    # Handle special case where number is less than 100
-    if not result and num > 0:
-        if num >= 10:
-            result['ten'] = num
-        else:
-            result['one'] = num
-    
     return result
 
 # Generate aliases
