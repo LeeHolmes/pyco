@@ -491,17 +491,3 @@ print("""
              └────────────┘
            Happy Calculating!
 """)
-
-## Determine if pyco has been embedded via py2exe. If so,
-## host the interactive console ourselves.
-compiled_pyco = False
-for arg in sys.argv:
-    if "pyco.exe" in arg:
-        compiled_pyco = True
-        break
-if compiled_pyco:
-    import code
-
-    vars = globals()
-    vars.update(locals())
-    code.interact(local = vars, banner = "")
