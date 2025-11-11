@@ -118,17 +118,292 @@ Your table is splitting the $113 bill (with 20% tip) 5 ways. But one friend is g
 54.239999999999995
 ```
 
-## Implemented but not yet documented
-- doing computer math (1\*gb, 10\*mb)
-- entering lists
-- calling functions
-- finding functions
-- getting help on functions
-- defining your own functions
-- list of built-in variables (_, pi, e)
-- list of utility functions
-- list of programmer's functions
-- list of conversion functions
-- list of statistical functions (avg etc.)
-- list of mathematical functions
-- list of trigonometric functions
+## Computer Math
+When working with file sizes or large numbers, pyco makes it easy to work with common units. Instead of typing out all those zeros, you can use these convenient shortcuts:
+
+```
+>>> 5*gb
+5368709120
+>>> 10*mb
+10485760
+>>> 1*tb + 500*gb
+1649267441664
+```
+
+The available units are:
+- `kb` - Kilobytes (1,024 bytes)
+- `mb` - Megabytes (1,024 kilobytes)
+- `gb` - Gigabytes (1,024 megabytes)  
+- `tb` - Terabytes (1,024 gigabytes)
+
+You can also work with large numbers using familiar terms:
+- `thousand` - 1,000
+- `million` - 1,000,000
+- `billion` - 1,000,000,000
+- `trillion` - 1,000,000,000,000
+
+```
+>>> 2.5*million
+2500000
+>>> 1.2*billion/300*million
+4.0
+```
+
+## Working with Lists
+Sometimes you need to perform calculations on a series of numbers. Pyco lets you enter lists of numbers using square brackets, just like you might write them on paper:
+
+```
+>>> [1, 2, 3, 4, 5]
+[1, 2, 3, 4, 5]
+>>> sum([10, 20, 30])
+60
+>>> avg([85, 92, 78, 96])
+87.75
+```
+
+For longer lists of numbers, pyco provides a convenient way to enter them one at a time. Type `inputlist` (or just `il` for short) and pyco will prompt you to enter numbers:
+
+```
+>>> il()
+
+0: 85
+1: 92
+2: 78
+3: 96
+4: [press ENTER with no number to finish]
+[85.0, 92.0, 78.0, 96.0]
+```
+
+The list gets stored in a special variable called `_list` that you can use in subsequent calculations. This is similar to the `_` variable you already know about, but only gets overwritten when you enter new lists:
+
+```
+>>> avg(_list)
+87.75
+>>> max(_list) - min(_list)
+18.0
+```
+
+Of course, you can still use the `_` variable:
+
+```
+>>> avg(_)
+87.75
+```
+
+## Calling other functions
+Functions are like _formulas_ in regular math: built-in calculators for specific tasks. Some are as simple as taking two numbers and returning their sum. Others can be more complex. They take information (called _arguments_) and give you back a result. To use a formula, type its name followed by parentheses containing the information it needs:
+
+```
+>>> sqrt(16)
+4.0
+>>> sin(90)
+0.8939966636005579
+```
+
+Some functions can take multiple pieces of information. You separate these by commas:
+
+```
+>>> round(3.14159, 3)
+3.142
+>>> pow(2, 8)
+256
+>>> ft_cm(5, 6)
+167.64
+```
+
+## Finding functions
+With so many functions available, pyco makes it easy to find what you're looking for. Use the star symbol (`*`) as a wildcard to search:
+
+```
+>>> *convert*
+convert_celsius_fahrenheit convert_fahrenheit_celsius convert_miles_kilometers ...
+>>> *sin*
+sin asin sinh arcsin
+>>> sqr*
+sqrt
+```
+
+You can search at the beginning or end of function names:
+- `sin*` - finds functions starting with "sin"
+- `*sin` - finds functions ending with "sin"  
+- `*sin*` - finds functions containing "sin" anywhere
+
+You can also use the TAB key. This is called tab completion, and is like auto-complete:
+
+>>> *convert[TAB]
+convert_celsius_fahrenheit convert_fahrenheit_celsius convert_miles_kilometers ...
+
+## Creating your own functions
+You can create your own functions to simplify calculations you do frequently. Use the `def` keyword followed by your function name:
+
+```
+>>> def tip_calculator(bill, percent):
+...     return bill * (1 + percent/100)
+...
+>>> tip_calculator(50, 18)
+59.0
+>>> tip_calculator(113, 20)
+135.6
+```
+
+## Built-in Variables
+Pyco comes with several useful variables already defined:
+
+- `_` - The result of your last calculation
+- `_list` - The last list you input
+- `pi` - The mathematical constant π (3.14159...)
+- `e` - The mathematical constant e (2.71828...)
+
+```
+>>> 2 * pi * 5
+31.41592653589793
+>>> e ** 2
+7.3890560989306504
+>>> 10 + 5
+15
+>>> _ * 2
+30
+```
+
+## Utility Functions
+These functions help with everyday tasks:
+
+- `tally` - Type a letter for everything you want to count. Will tell you how many things you typed in total.
+- `human(number)` - Break down large numbers into readable parts
+- `asciitable` or `at` - Display a table of ASCII characters
+
+```
+>>> human(1234567)
+{'million': 1, 'thousand': 234, 'one': 567}
+>>> tally()
+Tally: aaaaaaaaaaaa
+12
+```
+
+## Programmer's Functions
+For those working with computers and programming:
+
+- Data size constants: `kb`, `mb`, `gb`, `tb`
+- Number formatting: `bin()`, `hex()`, `oct()`
+- Character codes: `ord()`, `chr()`
+
+```
+>>> bin(42)
+'0b101010'
+>>> hex(255)
+'0xff'
+>>> ord('A')
+65
+>>> chr(65)
+'A'
+```
+
+## Conversion Functions
+Pyco includes dozens of conversion functions for common measurements. You can use the full names or short aliases:
+
+**Temperature:**
+- `c_f(celsius)` or `convert_celsius_fahrenheit(celsius)`
+- `f_c(fahrenheit)` or `convert_fahrenheit_celsius(fahrenheit)`
+
+**Distance:**
+- `mi_km(miles)` - miles to kilometers
+- `km_mi(kilometers)` - kilometers to miles  
+- `ft_in(feet)` - feet to inches
+- `in_ft(inches)` - inches to feet
+- `ft_cm(feet, inches=0)` - feet and inches to centimeters
+
+**Weight:**
+- `lb_kg(pounds)` - pounds to kilograms
+- `kg_lb(kilograms)` - kilograms to pounds
+
+**Volume:**
+- `oz_ml(ounces)` - fluid ounces to milliliters
+- `cup_ml(cups)` - cups to milliliters
+
+**Speed:**
+- `mph_kph(mph)` - miles per hour to kilometers per hour
+- `knots_mph(knots)` - nautical knots to miles per hour
+
+```
+>>> f_c(72)
+22.22222222222222
+>>> mi_km(100)
+160.9344
+>>> lb_kg(150)
+68.0388
+```
+
+## Statistical Functions
+When working with lists of numbers, these functions help you understand your data:
+
+- `avg(list)` or `mean(list)` - Average of the numbers
+- `median(list)` - Middle value when sorted
+- `mode(list)` - Most frequently occurring value
+- `stdev(list)` - Standard deviation
+- `sum(list)` - Add all numbers together
+- `min(list)` - Smallest number
+- `max(list)` - Largest number
+
+```
+>>> grades = [85, 92, 78, 96, 88]
+>>> avg(grades)
+87.8
+>>> median(grades)
+88
+>>> max(grades) - min(grades)
+18
+```
+
+## Mathematical Functions
+For more advanced calculations:
+
+**Basic Math:**
+- `sqrt(x)` - Square root
+- `pow(x, y)` - x raised to the power of y (you can also type x**y directly)
+- `abs(x)` - Absolute value
+- `round(x, digits)` - Round to specified decimal places
+
+**Logarithms:**
+- `log(x)` - Natural logarithm
+- `log10(x)` - Base-10 logarithm
+- `log2(x)` - Base-2 logarithm
+
+```
+>>> sqrt(144)
+12.0
+>>> log10(1000)
+3.0
+>>> abs(-15)
+15
+```
+
+## Trigonometric Functions
+For angles and triangles (angles are in radians unless noted):
+
+**Basic Trigonometry:**
+- `sin(x)` - Sine
+- `cos(x)` - Cosine  
+- `tan(x)` - Tangent
+
+**Inverse Functions:**
+- `asin(x)` - Arcsine
+- `acos(x)` - Arccosine
+- `atan(x)` - Arctangent
+
+**Hyperbolic Functions:**
+- `sinh(x)` - Hyperbolic sine
+- `cosh(x)` - Hyperbolic cosine
+- `tanh(x)` - Hyperbolic tangent
+
+**Angle Conversion:**
+- `degrees(x)` - Convert radians to degrees
+- `radians(x)` - Convert degrees to radians
+
+```
+>>> sin(radians(90))
+1.0
+>>> degrees(pi)
+180.0
+>>> tan(radians(45))
+0.9999999999999999
+```
