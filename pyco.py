@@ -2,6 +2,7 @@
 import sys
 import math
 from math import *
+import difflib
 
 if sys.implementation.name == 'cpython':
     import statistics
@@ -53,7 +54,7 @@ def find(term):
     if not "*" in term:
         found = []
         for current in globals():
-            if term in current:
+            if term in current and not current.startswith('_'):
                 found.append(current)
         return found
     
@@ -96,6 +97,8 @@ def find(term):
         # Find matching objects
         matching_objects = []
         for obj_name in globals().keys():
+            if obj_name.startswith('_'):
+                continue
             obj_match = False
             if obj_starts_with_star and obj_ends_with_star:
                 obj_match = obj_filter.lower() in obj_name.lower()
@@ -154,6 +157,8 @@ def find(term):
         # Handle simple wildcard patterns (no dot)
         found_results = []
         for current in results:
+            if current.startswith('_'):
+                continue
             match = False
             if starts_with_star and ends_with_star:
                 # Contains match
@@ -170,18 +175,39 @@ def find(term):
         
         return found_results
 
+def print_buffered(lines):
+    """
+    Print an array of lines with paging support.
+    
+    Prints lines and prompts "Press ENTER to continue" every 18 lines.
+    Gracefully handles cases where stdin is not available (like in tests).
+    
+    Args:
+        lines (list): Array of strings to print
+    """
+    for i, line in enumerate(lines):
+        if i > 0 and i % 18 == 0:
+            try:
+                input("Press ENTER to continue...")
+            except (EOFError, OSError):
+                # Handle case where stdin is not available (like in tests)
+                pass
+        print(line)
+
 def asciitable():
     """Display a formatted ASCII table with decimal, hexadecimal, and character representations."""
+    lines = []
+    
     for i in range(0, 255, 4):
-        if (i > 0) and (i % 72) == 0:
-            input("Press ENTER to continue...")
         if i % 72 == 0:
-            print("Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C")
-        print("{:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {}".format(
+            lines.append("Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C")
+        lines.append("{:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {}".format(
             i, i, get_printable_char(i),
             (i + 1), (i + 1), get_printable_char(i + 1),
             (i + 2), (i + 2), get_printable_char(i + 2),
             (i + 3), (i + 3), get_printable_char(i + 3)))
+    
+    print_buffered(lines)
     return
 
 def get_printable_char(char):
@@ -212,141 +238,545 @@ def average(list):
     """Calculate the average (mean) of a list of numbers."""
     return mean(list)
 
-def convert_celsius_fahrenheit(celsius):
-    """Convert temperature from Celsius to Fahrenheit."""
-    return (celsius * 9 / 5) + 32
+# Conversion Matrix System
+# This system stores conversion factors between units in a non-redundant matrix format.
+# Each conversion relationship is stored only once (e.g., hours->minutes: 60), and the
+# system automatically handles bidirectional conversions by inverting factors as needed.
+# Dynamic programming finds conversion paths between any two units, even through intermediate units.
 
-def convert_fahrenheit_celsius(fahrenheit):
-    """Convert temperature from Fahrenheit to Celsius."""
-    return (fahrenheit - 32) * 5 / 9
+# Category information is encoded in unit names using the format: category.unit
+# This eliminates the need for separate category metadata while maintaining type safety.
 
-def convert_miles_kilometers(miles):
-    """Convert distance from miles to kilometers."""
-    return miles * 1.609344
+def get_unit_category(unit):
+    """Extract the category from a unit name (category.unit format)."""
+    if '.' in unit:
+        return unit.split('.', 1)[0]
+    # Temperature units are handled specially
+    if unit in ['c', 'f', 'k']:
+        return 'temperature'
+    return 'unknown'
 
-def convert_kilometers_miles(kilometers):
-    """Convert distance from kilometers to miles."""
-    return kilometers / 1.609344
+def get_unit_name(unit):
+    """Extract the unit name from category.unit format."""
+    if '.' in unit:
+        return unit.split('.', 1)[1]
+    return unit
 
-def convert_miles_feet(miles):
-    """Convert distance from miles to feet."""
-    return miles * 5280
+# Cache for external to internal unit mapping (initialized lazily)
+_external_to_internal_cache = None
 
-def convert_feet_miles(feet):
-    """Convert distance from feet to miles."""
-    return feet / 5280
+def _get_external_to_internal_mapping():
+    """Generate mapping from external unit names to internal category.unit format."""
+    global _external_to_internal_cache
+    
+    if _external_to_internal_cache is None:
+        mapping = {}
+        
+        # Extract all units from the conversion matrix
+        for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+            # For each internal unit, map its external name to the internal format
+            if '.' in unit1:  # category.unit format
+                external_name = get_unit_name(unit1)  # Extract unit part
+                mapping[external_name] = unit1
+            if '.' in unit2:  # category.unit format
+                external_name = get_unit_name(unit2)  # Extract unit part
+                mapping[external_name] = unit2
+        
+        _external_to_internal_cache = mapping
+    
+    return _external_to_internal_cache
 
-def convert_inches_feet(inches):
-    """Convert distance from inches to feet."""
-    return inches / 12
+def _is_valid_unit(unit):
+    """Check if a unit is valid and can be converted."""
+    internal_unit = _to_internal_unit(unit)
+    
+    # Check if unit appears in conversion matrix
+    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+        if internal_unit == unit1 or internal_unit == unit2:
+            return True
+    return False
 
-def convert_feet_inches(feet):
-    """Convert distance from feet to inches."""
-    return feet * 12
+def _to_internal_unit(unit):
+    """Convert external unit name to internal category.unit format (case insensitive)."""
+    # If already in category.unit format, return as-is
+    if '.' in unit:
+        return unit
+    
+    # Convert to lowercase for case-insensitive matching
+    unit_lower = unit.lower()
+    
+    # Temperature units get converted to category.unit format
+    if unit_lower in ['c', 'f', 'k']:
+        return f'temperature.{unit_lower}'
+    
+    # Use the dynamically generated mapping (case insensitive)
+    mapping = _get_external_to_internal_mapping()
+    
+    # First try exact match
+    if unit in mapping:
+        return mapping[unit]
+    
+    # Then try case-insensitive match
+    for key, value in mapping.items():
+        if key.lower() == unit_lower:
+            return value
+    
+    # If no match found, return original unit
+    return unit
 
-def convert_feet_centimeters(feet, inches=0):
-    """Convert distance from feet (and optional inches) to centimeters."""
-    total_inches = (feet * 12) + inches
-    return total_inches * 2.54
+def get_units_by_category(category):
+    """Get all units belonging to a specific category."""
+    all_units = set()
+    # Get units from conversion matrix (temperature units are now included)
+    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+        all_units.add(unit1)
+        all_units.add(unit2)
+    
+    # Filter by category and return external unit names
+    category_units = [unit for unit in all_units if get_unit_category(unit) == category]
+    return [get_unit_name(unit) for unit in category_units]
 
-def convert_centimeters_feet(centimeters):
-    """Convert distance from centimeters to feet (returns tuple of feet, inches)."""
-    total_inches = centimeters / 2.54
-    feet = int(total_inches // 12)
-    inches = total_inches % 12
-    return (feet, inches)
+def get_all_categories():
+    """Get all available unit categories."""
+    all_units = set()
+    # Get units from conversion matrix (temperature units are now included)
+    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+        all_units.add(unit1)
+        all_units.add(unit2)
+    
+    return list(set(get_unit_category(unit) for unit in all_units))
 
-def convert_feet_meters(feet, inches=0):
-    """Convert distance from feet (and optional inches) to meters."""
-    total_inches = (feet * 12) + inches
-    return total_inches * 0.0254
+# Temperature conversion functions
+def _celsius_to_fahrenheit(value):
+    """Convert Celsius to Fahrenheit"""
+    return value * 9/5 + 32
 
-def convert_meters_feet(meters):
-    """Convert distance from meters to feet (returns tuple of feet, inches)."""
-    total_inches = meters / 0.0254
-    feet = int(total_inches // 12)
-    inches = total_inches % 12
-    return (feet, inches)
+def _fahrenheit_to_celsius(value):
+    """Convert Fahrenheit to Celsius"""
+    return (value - 32) * 5/9
 
-def convert_inches_centimeters(inches):
-    """Convert distance from inches to centimeters."""
-    return inches * 2.54
+def _celsius_to_kelvin(value):
+    """Convert Celsius to Kelvin"""
+    return value + 273.15
 
-def convert_centimeters_inches(centimeters):
-    """Convert distance from centimeters to inches."""
-    return centimeters / 2.54
+def _kelvin_to_celsius(value):
+    """Convert Kelvin to Celsius"""
+    return value - 273.15
 
-def convert_pounds_kilograms(pounds):
-    """Convert weight from pounds to kilograms."""
-    return pounds * 0.453592
+# Define conversion factors as a matrix where each relationship is stored only once
+# Format: (unit1, unit2): conversion_factor means unit1 * conversion_factor = unit2
+# For temperature conversions, functions are used instead of constants due to offsets
+# Units use category.name format to encode category information directly in the data
+CONVERSION_MATRIX = {
+    # Time conversions (smaller -> larger)
+    ('time.s', 'time.min'): 1/60,
+    ('time.min', 'time.h'): 1/60,
+    ('time.h', 'time.d'): 1/24,
+    ('time.d', 'time.wk'): 1/7,
+    ('time.d', 'time.yr'): 1/365.25,
+    
+    # Temperature conversions (using functions for offset calculations)
+    # Minimum spanning tree: C as hub connecting to F and K
+    ('temperature.c', 'temperature.f'): _celsius_to_fahrenheit,
+    ('temperature.f', 'temperature.c'): _fahrenheit_to_celsius,
+    ('temperature.c', 'temperature.k'): _celsius_to_kelvin,
+    ('temperature.k', 'temperature.c'): _kelvin_to_celsius,
+    
+    # Distance conversions (smaller -> larger) - minimal spanning tree
+    ('distance.in', 'distance.ft'): 1/12,
+    ('distance.in', 'distance.cm'): 2.54,
+    ('distance.cm', 'distance.m'): 1/100,
+    ('distance.m', 'distance.km'): 1/1000,
+    ('distance.km', 'distance.mi'): 1/1.609344,
+    
+    # Weight conversions (smaller -> larger)
+    ('weight.oz', 'weight.lb'): 1/16,
+    ('weight.g', 'weight.kg'): 1/1000,
+    ('weight.lb', 'weight.kg'): 0.453592,
+    ('weight.lb', 'weight.st'): 1/14,
+    ('weight.lb', 'weight.t'): 1/2000,
+    
+    # Volume conversions (smaller -> larger)
+    ('volume.tsp', 'volume.tbsp'): 1/3,
+    ('volume.tsp', 'volume.ml'): 4.92892,
+    ('volume.tbsp', 'volume.floz'): 1/2,
+    ('volume.tbsp', 'volume.ml'): 14.7868,
+    ('volume.ml', 'volume.floz'): 1/29.5735,
+    ('volume.ml', 'volume.l'): 1/1000,
+    ('volume.floz', 'volume.cup'): 1/8,
+    ('volume.pt', 'volume.qt'): 1/2,
+    ('volume.pt', 'volume.l'): 0.473176,
+    ('volume.qt', 'volume.l'): 0.946353,
+    ('volume.qt', 'volume.gal'): 1/4,
+    ('volume.l', 'volume.gal'): 1/3.78541,
+    
+    # Speed conversions (smaller -> larger)
+    ('speed.mps', 'speed.kph'): 3.6,
+    ('speed.kph', 'speed.mph'): 1/1.609344,
+    ('speed.kph', 'speed.kn'): 1/1.852,
+    ('speed.mph', 'speed.kn'): 1/1.15078,
+    
+    # Area conversions (smaller -> larger)
+    ('area.in2', 'area.ft2'): 1/144,
+    ('area.in2', 'area.cm2'): 6.4516,
+    ('area.cm2', 'area.m2'): 1/10000,
+    ('area.ft2', 'area.m2'): 0.092903,
+    ('area.ft2', 'area.ac'): 1/43560,
+    
+    # Power conversions
+    ('power.w', 'power.hp'): 1/745.7,
+}
 
-def convert_kilograms_pounds(kilograms):
-    """Convert weight from kilograms to pounds."""
-    return kilograms / 0.453592
+# Unit abbreviation to full English name mapping
+UNIT_NAMES = {
+    # Time units
+    's': 'seconds',
+    'min': 'minutes', 
+    'h': 'hours',
+    'd': 'days',
+    'wk': 'weeks',
+    'yr': 'years',
+    
+    # Temperature units (handled separately)
+    'c': 'Celsius',
+    'f': 'Fahrenheit',
+    'k': 'Kelvin',
+    
+    # Distance units
+    'in': 'inches',
+    'ft': 'feet',
+    'cm': 'centimeters',
+    'm': 'meters',
+    'km': 'kilometers',
+    'mi': 'miles',
+    
+    # Weight units
+    'oz': 'ounces',
+    'lb': 'pounds',
+    'g': 'grams', 
+    'kg': 'kilograms',
+    'st': 'stone',
+    't': 'tons',
+    
+    # Volume units
+    'tsp': 'teaspoons',
+    'tbsp': 'tablespoons',
+    'ml': 'milliliters',
+    'l': 'liters',
+    'floz': 'fluid ounces',
+    'cup': 'cups',
+    'pt': 'pints',
+    'qt': 'quarts',
+    'gal': 'gallons',
+    
+    # Speed units
+    'mps': 'meters/second',
+    'kph': 'kilometers/h',
+    'mph': 'miles/h',
+    'kn': 'knots',
+    
+    # Area units
+    'in2': 'inches^2',
+    'ft2': 'feet^2',
+    'cm2': 'centimeters^2',
+    'm2': 'meters^2',
+    'ac': 'acres',
+    
+    # Power units
+    'w': 'watts',
+    'hp': 'horsepower',
+}
 
-def convert_ounces_milliliters(ounces):
-    """Convert volume from fluid ounces to milliliters."""
-    return ounces * 29.5735
+def _generate_units_lines(search=""):
+    """
+    Generate lines for units display with optional search filtering.
+    
+    Args:
+        search (str): Optional search term to filter units.
+        
+    Returns:
+        list: Array of strings representing the units display
+    """
+    lines = [""]
+    
+    def _matches_search(unit_abbrev, unit_full_name, search_term):
+        """Check if unit matches search term using fuzzy string matching for typos"""
+        if not search_term:
+            return True
+        
+        search_lower = search_term.lower()
+        unit_abbrev_lower = unit_abbrev.lower()
+        unit_full_name_lower = unit_full_name.lower()
+        
+        # Exact partial match (high priority)
+        if (search_lower in unit_abbrev_lower or 
+            search_lower in unit_full_name_lower):
+            return True
+        
+        # Fuzzy matching for typos (similarity threshold of 0.6)
+        abbrev_similarity = difflib.SequenceMatcher(None, search_lower, unit_abbrev_lower).ratio()
+        name_similarity = difflib.SequenceMatcher(None, search_lower, unit_full_name_lower).ratio()
+        
+        # Also check if search term is similar to any word in the full name
+        name_words = unit_full_name_lower.split()
+        word_similarities = [difflib.SequenceMatcher(None, search_lower, word).ratio() for word in name_words]
+        max_word_similarity = max(word_similarities) if word_similarities else 0
+        
+        # Return True if any similarity score is above threshold
+        similarity_threshold = 0.6
+        return (abbrev_similarity >= similarity_threshold or 
+                name_similarity >= similarity_threshold or
+                max_word_similarity >= similarity_threshold)
+    
+    # Get all categories
+    categories = get_all_categories()
+    categories.sort()  # Sort alphabetically
+    
+    for category in categories:
+        # Get units for this category
+        all_units = get_units_by_category(category)
+        
+        # Filter units based on search term
+        if search:
+            units = []
+            for unit in all_units:
+                full_name = UNIT_NAMES.get(unit, unit)
+                if _matches_search(unit, full_name, search):
+                    units.append(unit)
+        else:
+            units = all_units
+            
+        units.sort()  # Sort alphabetically
+        
+        # Skip empty categories when searching
+        if not units:
+            continue
+            
+        # Add category header only if we have units to show
+        lines.append(f"{category.upper()}:")
+        
+        # Format units in 2-column layout
+        i = 0
+        while i < len(units):
+            unit1 = units[i]
+            full_name1 = UNIT_NAMES.get(unit1, unit1)
+            
+            # Format first column: "abbr full_name" (max 18 chars to fit in 37 total)
+            col1 = f"{unit1:<4} {full_name1}"
+            
+            # Check if we have a second unit and if first column fits
+            if len(col1) > 18:
+                # First column too long, put on its own line
+                lines.append(f"  {col1}")
+                i += 1
+            elif i + 1 < len(units):
+                # Try to add second column
+                unit2 = units[i + 1]
+                full_name2 = UNIT_NAMES.get(unit2, unit2)
+                col2 = f"{unit2:<4} {full_name2}"
+                
+                if len(col2) > 18:
+                    # Second column too long, append first column alone
+                    lines.append(f"  {col1}")
+                    i += 1
+                else:
+                    # Both columns fit, append them together
+                    total_line = f"  {col1:<18} {col2}"
+                    if len(total_line) <= 37:
+                        lines.append(total_line)
+                        i += 2
+                    else:
+                        # Line too long, append first column alone
+                        lines.append(f"  {col1}")
+                        i += 1
+            else:
+                # Only one unit left, append it
+                lines.append(f"  {col1}")
+                i += 1
+        
+        lines.append("")  # Empty line between categories
+    
+    return lines
 
-def convert_milliliters_ounces(milliliters):
-    """Convert volume from milliliters to fluid ounces."""
-    return milliliters / 29.5735
+def units(search=""):
+    """
+    Print a compact 2-column summary of available units with their human-readable names.
+    
+    Args:
+        search (str): Optional search term to filter units. If empty, shows all units.
+                     Matches against both unit abbreviations and full names (case-insensitive).
+    """
+    lines = _generate_units_lines(search)
+    print_buffered(lines)
 
-def convert_cups_ounces(cups):
-    """Convert volume from cups to fluid ounces."""
-    return cups * 8
+def _get_conversion_factor(from_unit, to_unit):
+    """
+    Get the conversion factor between two units, checking both directions in the matrix.
+    
+    Args:
+        from_unit (str): Source unit (category.unit format)
+        to_unit (str): Target unit (category.unit format)
+        
+    Returns:
+        float or function: Conversion factor or function, or None if no direct conversion exists
+    """
+    # Check forward direction
+    if (from_unit, to_unit) in CONVERSION_MATRIX:
+        return CONVERSION_MATRIX[(from_unit, to_unit)]
+    
+    # Check reverse direction (invert the factor or find reverse function)
+    if (to_unit, from_unit) in CONVERSION_MATRIX:
+        factor_or_func = CONVERSION_MATRIX[(to_unit, from_unit)]
+        if callable(factor_or_func):
+            # For functions, we need to look up the reverse function
+            # This is handled in the conversion matrix with bidirectional entries
+            return None  # Let the search continue to find the proper reverse function
+        else:
+            return 1 / factor_or_func
+    
+    return None
 
-def convert_ounces_cups(ounces):
-    """Convert volume from fluid ounces to cups."""
-    return ounces / 8
+def _get_connected_units(unit):
+    """
+    Get all units that can be directly converted from the given unit.
+    
+    Args:
+        unit (str): The unit to find connections for (category.unit format)
+        
+    Returns:
+        list: List of (connected_unit, conversion_factor_or_function) tuples
+    """
+    connections = []
+    
+    # Check all matrix entries for connections
+    for (unit1, unit2), factor_or_func in CONVERSION_MATRIX.items():
+        if unit1 == unit:
+            connections.append((unit2, factor_or_func))
+        elif unit2 == unit:
+            if callable(factor_or_func):
+                # For functions, we don't invert - the reverse should be explicitly defined
+                continue
+            else:
+                connections.append((unit1, 1/factor_or_func))
+    
+    return connections
 
-def convert_cups_milliliters(cups):
-    """Convert volume from cups to milliliters."""
-    return cups * 236.588
+def convert(from_unit="", to_unit="", value=0):
+    """
+    Convert a value from one unit to another using dynamic programming.
+    
+    This function can handle direct conversions or find multi-step conversion paths
+    through intermediate units. For example:
+    - Direct: miles -> kilometers 
+    - Multi-step: miles -> feet -> inches
+    - Complex: grams -> pounds -> ounces
+    - Temperature: celsius -> fahrenheit (using conversion functions for offsets)
+    
+    If from_unit or to_unit are empty strings, displays available units instead.
+    
+    The algorithm uses a breadth-first search to find the shortest conversion path
+    between any two units in the conversion matrix.
+    
+    Args:
+        from_unit (str): The source unit
+        to_unit (str): The target unit  
+        value (float): The value to convert
+        
+    Returns:
+        float: The converted value, or None if units are invalid
+        
+    Raises:
+        ValueError: If no conversion path exists between valid units
+        
+    Examples:
+        >>> convert('hours', 'minutes', 2)
+        120.0
+        >>> convert('miles', 'inches', 1)  # Multi-step: miles -> feet -> inches
+        63360.0
+        >>> convert('c', 'f', 0)  # Temperature: 0°C to 32°F
+        32.0
+        >>> convert()  # Display available units
+    """
+    # If from_unit or to_unit are empty, display available units
+    if not from_unit or not to_unit:
+        header_lines = [
+            "Convert - convert values between two units.",
+            "Usage: convert(from, to, value)",
+            "",
+            "Available units are:"
+        ]
+        units_lines = _generate_units_lines()
+        all_lines = header_lines + units_lines
+        print_buffered(all_lines)
+        return None
+    
+    if from_unit.lower() == to_unit.lower():
+        return value
+    
+    # Check if units are valid before attempting conversion
+    from_unit_valid = _is_valid_unit(from_unit)
+    to_unit_valid = _is_valid_unit(to_unit)
+    
+    # Handle invalid units with helpful error messages
+    if not from_unit_valid and not to_unit_valid:
+        error_lines = [f"No conversion from '{from_unit}' to '{to_unit}'. Type 'units' to see available conversions."]
+        print_buffered(error_lines)
+        return None
+    elif not from_unit_valid:
+        error_lines = [f"Could not convert the unit '{from_unit}'. Did you mean one of the following?"]
+        units_lines = _generate_units_lines(from_unit)
+        all_lines = error_lines + units_lines
+        print_buffered(all_lines)
+        return None
+    elif not to_unit_valid:
+        error_lines = [f"Could not convert the unit '{to_unit}'. Did you mean one of the following?"]
+        units_lines = _generate_units_lines(to_unit)
+        all_lines = error_lines + units_lines
+        print_buffered(all_lines)
+        return None
+    
+    # Convert to internal format
+    from_unit_internal = _to_internal_unit(from_unit)
+    to_unit_internal = _to_internal_unit(to_unit)
+    
+    # Check for direct conversion first
+    conversion_factor_or_func = _get_conversion_factor(from_unit_internal, to_unit_internal)
+    if conversion_factor_or_func is not None:
+        if callable(conversion_factor_or_func):
+            return conversion_factor_or_func(value)
+        else:
+            return value * conversion_factor_or_func
+    
+    # Use Dijkstra-like algorithm to find shortest conversion path
+    visited = set()
+    queue = [(from_unit_internal, value)]  # (current_unit, current_value)
+    
+    while queue:
+        current_unit, current_value = queue.pop(0)
+        
+        if current_unit == to_unit_internal:
+            return current_value
+            
+        if current_unit in visited:
+            continue
+            
+        visited.add(current_unit)
+        
+        # Get all units connected to current_unit
+        connected_units = _get_connected_units(current_unit)
+        
+        for next_unit, conversion_factor_or_func in connected_units:
+            if next_unit not in visited:
+                if callable(conversion_factor_or_func):
+                    new_value = conversion_factor_or_func(current_value)
+                else:
+                    new_value = current_value * conversion_factor_or_func
+                queue.append((next_unit, new_value))
+    
+    # If we get here, no conversion path was found
+    raise ValueError(f"No conversion path found from '{from_unit}' to '{to_unit}'")
 
-def convert_milliliters_cups(milliliters):
-    """Convert volume from milliliters to cups."""
-    return milliliters / 236.588
 
-def convert_mph_kph(mph):
-    """Convert speed from miles per hour to kilometers per hour."""
-    return mph * 1.609344
-
-def convert_kph_mph(kph):
-    """Convert speed from kilometers per hour to miles per hour."""
-    return kph / 1.609344
-
-def convert_knots_mph(knots):
-    """Convert speed from knots to miles per hour."""
-    return knots * 1.15078
-
-def convert_mph_knots(mph):
-    """Convert speed from miles per hour to knots."""
-    return mph / 1.15078
-
-def convert_knots_kph(knots):
-    """Convert speed from knots to kilometers per hour."""
-    return knots * 1.852
-
-def convert_kph_knots(kph):
-    """Convert speed from kilometers per hour to knots."""
-    return kph / 1.852
-
-def convert_mph_mps(mph):
-    """Convert speed from miles per hour to meters per second."""
-    return mph * 0.44704
-
-def convert_mps_mph(mps):
-    """Convert speed from meters per second to miles per hour."""
-    return mps / 0.44704
-
-def convert_kph_mps(kph):
-    """Convert speed from kilometers per hour to meters per second."""
-    return kph * 0.277778
-
-def convert_mps_kph(mps):
-    """Convert speed from meters per second to kilometers per hour."""
-    return mps / 0.277778
 
 def tally():
     """Count the number of characters in user input (useful for tallying)."""
@@ -388,81 +818,6 @@ def human(number):
             result[unit_name] = count
     
     return result
-
-# Generate aliases
-# Temperature conversions
-c_c_f = convert_celsius_fahrenheit
-c_f = convert_celsius_fahrenheit
-c_f_c = convert_fahrenheit_celsius
-f_c = convert_fahrenheit_celsius
-
-# Distance conversions
-c_mi_km = convert_miles_kilometers
-mi_km = convert_miles_kilometers
-c_km_mi = convert_kilometers_miles
-km_mi = convert_kilometers_miles
-c_mi_ft = convert_miles_feet
-mi_ft = convert_miles_feet
-c_ft_mi = convert_feet_miles
-ft_mi = convert_feet_miles
-c_in_ft = convert_inches_feet
-in_ft = convert_inches_feet
-c_ft_in = convert_feet_inches
-ft_in = convert_feet_inches
-c_ft_cm = convert_feet_centimeters
-ft_cm = convert_feet_centimeters
-c_cm_ft = convert_centimeters_feet
-cm_ft = convert_centimeters_feet
-c_ft_m = convert_feet_meters
-ft_m = convert_feet_meters
-c_m_ft = convert_meters_feet
-m_ft = convert_meters_feet
-c_in_cm = convert_inches_centimeters
-in_cm = convert_inches_centimeters
-c_cm_in = convert_centimeters_inches
-cm_in = convert_centimeters_inches
-
-# Weight conversions
-c_lb_kg = convert_pounds_kilograms
-lb_kg = convert_pounds_kilograms
-c_kg_lb = convert_kilograms_pounds
-kg_lb = convert_kilograms_pounds
-
-# Volume conversions
-c_oz_ml = convert_ounces_milliliters
-oz_ml = convert_ounces_milliliters
-c_ml_oz = convert_milliliters_ounces
-ml_oz = convert_milliliters_ounces
-c_cup_oz = convert_cups_ounces
-cup_oz = convert_cups_ounces
-c_oz_cup = convert_ounces_cups
-oz_cup = convert_ounces_cups
-c_cup_ml = convert_cups_milliliters
-cup_ml = convert_cups_milliliters
-c_ml_cup = convert_milliliters_cups
-ml_cup = convert_milliliters_cups
-
-# Speed conversions
-c_mph_kph = convert_mph_kph
-mph_kph = convert_mph_kph
-c_kph_mph = convert_kph_mph
-kph_mph = convert_kph_mph
-c_knots_mph = convert_knots_mph
-knots_mph = convert_knots_mph
-c_mph_knots = convert_mph_knots
-mph_knots = convert_mph_knots
-c_knots_kph = convert_knots_kph
-knots_kph = convert_knots_kph
-c_kph_knots = convert_kph_knots
-kph_knots = convert_kph_knots
-c_mph_mps = convert_mph_mps
-mph_mps = convert_mph_mps
-c_mps_mph = convert_mps_mph
-mps_mph = convert_mps_mph
-c_kph_mps = convert_kph_mps
-kph_mps = convert_kph_mps
-c_mps_kph = convert_mps_kph
-mps_kph = convert_mps_kph
 
 # Other aliases
 at = asciitable

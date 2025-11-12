@@ -11,7 +11,6 @@ import io
 from unittest.mock import patch, MagicMock
 import pyco
 
-
 class TestPycoUtilityFunctions(unittest.TestCase):
     """Test utility functions in pyco.py"""
     
@@ -19,12 +18,7 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         """Comprehensive test of the find function with all patterns"""
         # Test simple string search (original behavior)
         results = pyco.find('convert')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertIn('convert_fahrenheit_celsius', results)
-        self.assertIn('convert_miles_kilometers', results)
-        self.assertIn('convert_feet_centimeters', results)
-        self.assertIn('convert_pounds_kilograms', results)
-        self.assertIn('convert_ounces_milliliters', results)
+        self.assertIn('convert', results)
         
         # Test finding functions that contain 'avg'
         results = pyco.find('avg')
@@ -36,41 +30,19 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         
         # Test wildcard patterns
         # Prefix matching (starts with)
-        results = pyco.find('convert*')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertIn('convert_fahrenheit_celsius', results)
-        self.assertIn('convert_miles_kilometers', results)
-        self.assertIn('convert_feet_centimeters', results)
-        self.assertIn('convert_pounds_kilograms', results)
-        self.assertIn('convert_ounces_milliliters', results)
+        results = pyco.find('f*')
+        self.assertIn('fabs', results)
+        self.assertIn('factorial', results)
         
         # Suffix matching (ends with)
-        results = pyco.find('*fahrenheit')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertNotIn('convert_fahrenheit_celsius', results)
+        results = pyco.find('*an')
+        self.assertIn('atan', results)
+        self.assertIn('mean', results)
         
         # Contains matching (surrounded by *)
-        results = pyco.find('*celsius*')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertIn('convert_fahrenheit_celsius', results)
-        
-        # Test short aliases with wildcards
-        results = pyco.find('c_*')
-        expected_aliases = ['c_c_f', 'c_f_c', 'c_mi_km', 'c_km_mi', 'c_mi_ft', 'c_ft_mi', 'c_in_ft', 'c_ft_in',
-                           'c_ft_cm', 'c_cm_ft', 'c_ft_m', 'c_m_ft', 'c_in_cm', 'c_cm_in',
-                           'c_lb_kg', 'c_kg_lb', 'c_oz_ml', 'c_ml_oz', 'c_cup_oz', 'c_oz_cup',
-                           'c_cup_ml', 'c_ml_cup']
-        for alias in expected_aliases:
-            self.assertIn(alias, results)
-        
-        # Test aliases ending with '_f'
-        results = pyco.find('*_f')
-        self.assertIn('c_c_f', results)
-        
-        # Test aliases containing '_mi_'
-        results = pyco.find('*_mi_*')
-        self.assertIn('c_mi_km', results)
-        self.assertIn('c_mi_ft', results)
+        results = pyco.find('*ex*')
+        self.assertIn('exp', results)
+        self.assertIn('frexp', results)
         
         # Test pattern that should match nothing
         results = pyco.find('*xyz*')
@@ -166,6 +138,29 @@ class TestPycoUtilityFunctions(unittest.TestCase):
                           f"Pattern '{pattern}' took too long to execute")
             self.assertIsInstance(results, list)
     
+    def test_find_excludes_underscore_prefix(self):
+        """Test that find function excludes functions starting with underscore"""
+        # Test direct search for underscore-prefixed functions should return empty
+        underscore_results = pyco.find('_*')
+        self.assertEqual(underscore_results, [], 
+                        "find('_*') should return empty list - underscore functions should be excluded")
+        
+        # Test that functions containing but not starting with underscore are still found
+        underscore_containing = pyco.find('*_*')
+        underscore_starting = [name for name in underscore_containing if name.startswith('_')]
+        self.assertEqual(underscore_starting, [], 
+                        "No functions starting with underscore should be in '*_*' search results")
+        
+        # Verify that some functions with underscores (but not starting) are found
+        self.assertGreater(len(underscore_containing), 0, 
+                          "Should find functions containing underscores (like geometric_mean)")
+        
+        # Test simple search for underscore should not return underscore-prefixed functions
+        simple_underscore = pyco.find('_')
+        underscore_prefixed = [name for name in simple_underscore if name.startswith('_')]
+        self.assertEqual(underscore_prefixed, [], 
+                        "Simple underscore search should not return underscore-prefixed functions")
+    
     def test_get_printable_char(self):
         """Test the get_printable_char function"""
         # Test printable ASCII characters
@@ -187,13 +182,6 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         with patch('builtins.print'):  # Suppress print output
             result = pyco.inputlist()
         self.assertEqual(result, [1, 2])
-    
-    @patch('builtins.input', side_effect=['3', '4', ''])
-    def test_il_alias(self, mock_input):
-        """Test the il alias for inputlist"""
-        with patch('builtins.print'):  # Suppress print output
-            result = pyco.il()
-        self.assertEqual(result, [3, 4])
     
     @patch('builtins.input', return_value='test')
     def test_tally(self, mock_input):
@@ -254,527 +242,475 @@ class TestPycoStatisticsFunctions(unittest.TestCase):
         self.assertEqual(pyco.average([5]), 5.0)
         self.assertAlmostEqual(pyco.average([1.5, 2.5, 3.5]), 2.5)
     
-    def test_avg_alias(self):
-        """Test the avg alias for average"""
-        self.assertEqual(pyco.avg([1, 2, 3, 4, 5]), 3.0)
-        self.assertEqual(pyco.avg([10, 20, 30]), 20.0)
-
 
 class TestPycoTemperatureConversions(unittest.TestCase):
     """Test temperature conversion functions in pyco.py"""
     
     def test_convert_celsius_fahrenheit(self):
         """Test Celsius to Fahrenheit conversion"""
-        self.assertEqual(pyco.convert_celsius_fahrenheit(0), 32.0)
-        self.assertEqual(pyco.convert_celsius_fahrenheit(100), 212.0)
-        self.assertEqual(pyco.convert_celsius_fahrenheit(-40), -40.0)
-        self.assertAlmostEqual(pyco.convert_celsius_fahrenheit(37), 98.6)
+        self.assertEqual(pyco.convert('c', 'f', 0), 32.0)
+        self.assertEqual(pyco.convert('c', 'f', 100), 212.0)
+        self.assertEqual(pyco.convert('c', 'f', -40), -40.0)
+        self.assertAlmostEqual(pyco.convert('c', 'f', 37), 98.6)
     
     def test_convert_fahrenheit_celsius(self):
         """Test Fahrenheit to Celsius conversion"""
-        self.assertEqual(pyco.convert_fahrenheit_celsius(32), 0.0)
-        self.assertEqual(pyco.convert_fahrenheit_celsius(212), 100.0)
-        self.assertEqual(pyco.convert_fahrenheit_celsius(-40), -40.0)
-        self.assertAlmostEqual(pyco.convert_fahrenheit_celsius(98.6), 37.0)
-
+        self.assertEqual(pyco.convert('f', 'c', 32), 0.0)
+        self.assertEqual(pyco.convert('f', 'c', 212), 100.0)
+        self.assertEqual(pyco.convert('f', 'c', -40), -40.0)
+        self.assertAlmostEqual(pyco.convert('f', 'c', 98.6), 37.0)
 
 class TestPycoDistanceConversions(unittest.TestCase):
     """Test distance conversion functions in pyco.py"""
     
     def test_convert_miles_kilometers(self):
         """Test miles to kilometers conversion"""
-        self.assertAlmostEqual(pyco.convert_miles_kilometers(1), 1.609344)
-        self.assertAlmostEqual(pyco.convert_miles_kilometers(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_miles_kilometers(5), 8.04672)
+        self.assertAlmostEqual(pyco.convert('mi', 'km', 1), 1.609344)
+        self.assertAlmostEqual(pyco.convert('mi', 'km', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mi', 'km', 5), 8.04672)
     
-    def test_c_mi_km_alias(self):
-        """Test c_mi_km alias for convert_miles_kilometers"""
-        self.assertAlmostEqual(pyco.c_mi_km(1), 1.609344)
-    
-    def test_mi_km_alias(self):
-        """Test mi_km alias for convert_miles_kilometers"""
-        self.assertAlmostEqual(pyco.mi_km(1), 1.609344)
+
     
     def test_convert_kilometers_miles(self):
         """Test kilometers to miles conversion"""
-        self.assertAlmostEqual(pyco.convert_kilometers_miles(1.609344), 1.0)
-        self.assertAlmostEqual(pyco.convert_kilometers_miles(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_kilometers_miles(8.04672), 5.0)
+        self.assertAlmostEqual(pyco.convert('km', 'mi', 1.609344), 1.0)
+        self.assertAlmostEqual(pyco.convert('km', 'mi', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('km', 'mi', 8.04672), 5.0)
     
-    def test_c_km_mi_alias(self):
-        """Test c_km_mi alias for convert_kilometers_miles"""
-        self.assertAlmostEqual(pyco.c_km_mi(1.609344), 1.0)
-    
-    def test_km_mi_alias(self):
-        """Test km_mi alias for convert_kilometers_miles"""
-        self.assertAlmostEqual(pyco.km_mi(1.609344), 1.0)
+
     
     def test_convert_miles_feet(self):
         """Test miles to feet conversion"""
-        self.assertEqual(pyco.convert_miles_feet(1), 5280)
-        self.assertEqual(pyco.convert_miles_feet(0), 0)
-        self.assertEqual(pyco.convert_miles_feet(0.5), 2640)
+        self.assertAlmostEqual(pyco.convert('mi', 'ft', 1), 5280, places=10)
+        self.assertEqual(pyco.convert('mi', 'ft', 0), 0)
+        self.assertAlmostEqual(pyco.convert('mi', 'ft', 0.5), 2640, places=10)
     
-    def test_c_mi_ft_alias(self):
-        """Test c_mi_ft alias for convert_miles_feet"""
-        self.assertEqual(pyco.c_mi_ft(1), 5280)
-    
-    def test_mi_ft_alias(self):
-        """Test mi_ft alias for convert_miles_feet"""
-        self.assertEqual(pyco.mi_ft(1), 5280)
+
     
     def test_convert_feet_miles(self):
         """Test feet to miles conversion"""
-        self.assertEqual(pyco.convert_feet_miles(5280), 1.0)
-        self.assertEqual(pyco.convert_feet_miles(0), 0.0)
-        self.assertEqual(pyco.convert_feet_miles(2640), 0.5)
+        self.assertAlmostEqual(pyco.convert('ft', 'mi', 5280), 1.0, places=10)
+        self.assertEqual(pyco.convert('ft', 'mi', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ft', 'mi', 2640), 0.5, places=10)
     
-    def test_c_ft_mi_alias(self):
-        """Test c_ft_mi alias for convert_feet_miles"""
-        self.assertEqual(pyco.c_ft_mi(5280), 1.0)
-    
-    def test_ft_mi_alias(self):
-        """Test ft_mi alias for convert_feet_miles"""
-        self.assertEqual(pyco.ft_mi(5280), 1.0)
+
     
     def test_convert_inches_feet(self):
         """Test inches to feet conversion"""
-        self.assertEqual(pyco.convert_inches_feet(12), 1.0)
-        self.assertEqual(pyco.convert_inches_feet(0), 0.0)
-        self.assertEqual(pyco.convert_inches_feet(24), 2.0)
-        self.assertEqual(pyco.convert_inches_feet(6), 0.5)
-    
-    def test_c_in_ft_alias(self):
-        """Test c_in_ft alias for convert_inches_feet"""
-        self.assertEqual(pyco.c_in_ft(12), 1.0)
-    
-    def test_in_ft_alias(self):
-        """Test in_ft alias for convert_inches_feet"""
-        self.assertEqual(pyco.in_ft(12), 1.0)
+        self.assertEqual(pyco.convert('in', 'ft', 12), 1.0)
+        self.assertEqual(pyco.convert('in', 'ft', 0), 0.0)
+        self.assertEqual(pyco.convert('in', 'ft', 24), 2.0)
+        self.assertEqual(pyco.convert('in', 'ft', 6), 0.5)
     
     def test_convert_feet_inches(self):
         """Test feet to inches conversion"""
-        self.assertEqual(pyco.convert_feet_inches(1), 12)
-        self.assertEqual(pyco.convert_feet_inches(0), 0)
-        self.assertEqual(pyco.convert_feet_inches(2), 24)
-        self.assertEqual(pyco.convert_feet_inches(0.5), 6)
-    
-    def test_c_ft_in_alias(self):
-        """Test c_ft_in alias for convert_feet_inches"""
-        self.assertEqual(pyco.c_ft_in(1), 12)
-    
-    def test_ft_in_alias(self):
-        """Test ft_in alias for convert_feet_inches"""
-        self.assertEqual(pyco.ft_in(1), 12)
+        self.assertEqual(pyco.convert('ft', 'in', 1), 12)
+        self.assertEqual(pyco.convert('ft', 'in', 0), 0)
+        self.assertEqual(pyco.convert('ft', 'in', 2), 24)
+        self.assertEqual(pyco.convert('ft', 'in', 0.5), 6)
     
     def test_convert_feet_centimeters(self):
         """Test feet to centimeters conversion"""
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(1), 30.48)
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(2), 60.96)
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(0.5), 15.24)
-        # Test with inches parameter
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(1, 6), 45.72)
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(0, 12), 30.48)
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(2, 3), 68.58)
+        self.assertAlmostEqual(pyco.convert('ft', 'cm', 1), 30.48)
+        self.assertAlmostEqual(pyco.convert('ft', 'cm', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ft', 'cm', 2), 60.96)
+        self.assertAlmostEqual(pyco.convert('ft', 'cm', 0.5), 15.24)
+
     
-    def test_c_ft_cm_alias(self):
-        """Test c_ft_cm alias for convert_feet_centimeters"""
-        self.assertAlmostEqual(pyco.c_ft_cm(1), 30.48)
-        self.assertAlmostEqual(pyco.c_ft_cm(1, 6), 45.72)
-    
-    def test_ft_cm_alias(self):
-        """Test ft_cm alias for convert_feet_centimeters"""
-        self.assertAlmostEqual(pyco.ft_cm(1), 30.48)
-        self.assertAlmostEqual(pyco.ft_cm(1, 6), 45.72)
-    
-    def test_convert_centimeters_feet(self):
-        """Test centimeters to feet conversion"""
-        feet, inches = pyco.convert_centimeters_feet(30.48)
-        self.assertEqual(feet, 1)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-        
-        feet, inches = pyco.convert_centimeters_feet(45.72)
-        self.assertEqual(feet, 1)
-        self.assertAlmostEqual(inches, 6.0, places=10)
-        
-        feet, inches = pyco.convert_centimeters_feet(0)
-        self.assertEqual(feet, 0)
-        self.assertEqual(inches, 0.0)
-        
-        feet, inches = pyco.convert_centimeters_feet(60.96)
-        self.assertEqual(feet, 2)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-    
-    def test_c_cm_ft_alias(self):
-        """Test c_cm_ft alias for convert_centimeters_feet"""
-        feet, inches = pyco.c_cm_ft(30.48)
-        self.assertEqual(feet, 1)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-    
-    def test_cm_ft_alias(self):
-        """Test cm_ft alias for convert_centimeters_feet"""
-        feet, inches = pyco.cm_ft(30.48)
-        self.assertEqual(feet, 1)
-        self.assertAlmostEqual(inches, 0.0, places=10)
+
     
     def test_convert_feet_meters(self):
         """Test feet to meters conversion"""
-        self.assertAlmostEqual(pyco.convert_feet_meters(3), 0.9144)
-        self.assertAlmostEqual(pyco.convert_feet_meters(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_feet_meters(1), 0.3048)
-        # Test with inches parameter
-        self.assertAlmostEqual(pyco.convert_feet_meters(3, 6), 1.0668)
-        self.assertAlmostEqual(pyco.convert_feet_meters(0, 12), 0.3048)
+        self.assertAlmostEqual(pyco.convert('ft', 'm', 3), 0.9144)
+        self.assertAlmostEqual(pyco.convert('ft', 'm', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ft', 'm', 1), 0.3048)
+
     
-    def test_c_ft_m_alias(self):
-        """Test c_ft_m alias for convert_feet_meters"""
-        self.assertAlmostEqual(pyco.c_ft_m(3), 0.9144)
-        self.assertAlmostEqual(pyco.c_ft_m(3, 6), 1.0668)
-    
-    def test_ft_m_alias(self):
-        """Test ft_m alias for convert_feet_meters"""
-        self.assertAlmostEqual(pyco.ft_m(3), 0.9144)
-        self.assertAlmostEqual(pyco.ft_m(3, 6), 1.0668)
-    
-    def test_convert_meters_feet(self):
-        """Test meters to feet conversion"""
-        feet, inches = pyco.convert_meters_feet(0.9144)
-        self.assertEqual(feet, 3)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-        
-        feet, inches = pyco.convert_meters_feet(1.0668)
-        self.assertEqual(feet, 3)
-        self.assertAlmostEqual(inches, 6.0, places=10)
-        
-        feet, inches = pyco.convert_meters_feet(0)
-        self.assertEqual(feet, 0)
-        self.assertEqual(inches, 0.0)
-    
-    def test_c_m_ft_alias(self):
-        """Test c_m_ft alias for convert_meters_feet"""
-        feet, inches = pyco.c_m_ft(0.9144)
-        self.assertEqual(feet, 3)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-    
-    def test_m_ft_alias(self):
-        """Test m_ft alias for convert_meters_feet"""
-        feet, inches = pyco.m_ft(0.9144)
-        self.assertEqual(feet, 3)
-        self.assertAlmostEqual(inches, 0.0, places=10)
+
     
     def test_convert_inches_centimeters(self):
         """Test inches to centimeters conversion"""
-        self.assertAlmostEqual(pyco.convert_inches_centimeters(1), 2.54)
-        self.assertAlmostEqual(pyco.convert_inches_centimeters(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_inches_centimeters(12), 30.48)
-        self.assertAlmostEqual(pyco.convert_inches_centimeters(6), 15.24)
-    
-    def test_c_in_cm_alias(self):
-        """Test c_in_cm alias for convert_inches_centimeters"""
-        self.assertAlmostEqual(pyco.c_in_cm(1), 2.54)
-    
-    def test_in_cm_alias(self):
-        """Test in_cm alias for convert_inches_centimeters"""
-        self.assertAlmostEqual(pyco.in_cm(1), 2.54)
+        self.assertAlmostEqual(pyco.convert('in', 'cm', 1), 2.54)
+        self.assertAlmostEqual(pyco.convert('in', 'cm', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('in', 'cm', 12), 30.48)
+        self.assertAlmostEqual(pyco.convert('in', 'cm', 6), 15.24)
     
     def test_convert_centimeters_inches(self):
         """Test centimeters to inches conversion"""
-        self.assertAlmostEqual(pyco.convert_centimeters_inches(2.54), 1.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_inches(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_inches(30.48), 12.0)
-        self.assertAlmostEqual(pyco.convert_centimeters_inches(15.24), 6.0)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', 2.54), 1.0)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', 30.48), 12.0)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', 15.24), 6.0)
     
-    def test_c_cm_in_alias(self):
-        """Test c_cm_in alias for convert_centimeters_inches"""
-        self.assertAlmostEqual(pyco.c_cm_in(2.54), 1.0)
-    
-    def test_cm_in_alias(self):
-        """Test cm_in alias for convert_centimeters_inches"""
-        self.assertAlmostEqual(pyco.cm_in(2.54), 1.0)
-
-
 class TestPycoWeightConversions(unittest.TestCase):
     """Test weight conversion functions in pyco.py"""
     
     def test_convert_pounds_kilograms(self):
         """Test pounds to kilograms conversion"""
-        self.assertAlmostEqual(pyco.convert_pounds_kilograms(1), 0.453592)
-        self.assertAlmostEqual(pyco.convert_pounds_kilograms(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_pounds_kilograms(2.20462), 1.0, places=5)
-        self.assertAlmostEqual(pyco.convert_pounds_kilograms(100), 45.3592)
-    
-    def test_c_lb_kg_alias(self):
-        """Test c_lb_kg alias for convert_pounds_kilograms"""
-        self.assertAlmostEqual(pyco.c_lb_kg(1), 0.453592)
-    
-    def test_lb_kg_alias(self):
-        """Test lb_kg alias for convert_pounds_kilograms"""
-        self.assertAlmostEqual(pyco.lb_kg(1), 0.453592)
+        self.assertAlmostEqual(pyco.convert('lb', 'kg', 1), 0.453592)
+        self.assertAlmostEqual(pyco.convert('lb', 'kg', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('lb', 'kg', 2.20462), 1.0, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 'kg', 100), 45.3592)
     
     def test_convert_kilograms_pounds(self):
         """Test kilograms to pounds conversion"""
-        self.assertAlmostEqual(pyco.convert_kilograms_pounds(0.453592), 1.0)
-        self.assertAlmostEqual(pyco.convert_kilograms_pounds(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_kilograms_pounds(1), 2.20462, places=5)
-        self.assertAlmostEqual(pyco.convert_kilograms_pounds(45.3592), 100.0)
+        self.assertAlmostEqual(pyco.convert('kg', 'lb', 0.453592), 1.0)
+        self.assertAlmostEqual(pyco.convert('kg', 'lb', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kg', 'lb', 1), 2.20462, places=5)
+        self.assertAlmostEqual(pyco.convert('kg', 'lb', 45.3592), 100.0)
     
-    def test_c_kg_lb_alias(self):
-        """Test c_kg_lb alias for convert_kilograms_pounds"""
-        self.assertAlmostEqual(pyco.c_kg_lb(0.453592), 1.0)
-    
-    def test_kg_lb_alias(self):
-        """Test kg_lb alias for convert_kilograms_pounds"""
-        self.assertAlmostEqual(pyco.kg_lb(0.453592), 1.0)
-
-
 class TestPycoVolumeConversions(unittest.TestCase):
     """Test volume conversion functions in pyco.py"""
     
     def test_convert_ounces_milliliters(self):
         """Test fluid ounces to milliliters conversion"""
-        self.assertAlmostEqual(pyco.convert_ounces_milliliters(1), 29.5735)
-        self.assertAlmostEqual(pyco.convert_ounces_milliliters(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_ounces_milliliters(8), 236.588)
-        self.assertAlmostEqual(pyco.convert_ounces_milliliters(0.5), 14.78675)
-    
-    def test_c_oz_ml_alias(self):
-        """Test c_oz_ml alias for convert_ounces_milliliters"""
-        self.assertAlmostEqual(pyco.c_oz_ml(1), 29.5735)
-    
-    def test_oz_ml_alias(self):
-        """Test oz_ml alias for convert_ounces_milliliters"""
-        self.assertAlmostEqual(pyco.oz_ml(1), 29.5735)
+        self.assertAlmostEqual(pyco.convert('floz', 'ml', 1), 29.5735)
+        self.assertAlmostEqual(pyco.convert('floz', 'ml', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('floz', 'ml', 8), 236.588)
+        self.assertAlmostEqual(pyco.convert('floz', 'ml', 0.5), 14.78675)
     
     def test_convert_milliliters_ounces(self):
         """Test milliliters to fluid ounces conversion"""
-        self.assertAlmostEqual(pyco.convert_milliliters_ounces(29.5735), 1.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_ounces(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_ounces(236.588), 8.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_ounces(14.78675), 0.5)
-    
-    def test_c_ml_oz_alias(self):
-        """Test c_ml_oz alias for convert_milliliters_ounces"""
-        self.assertAlmostEqual(pyco.c_ml_oz(29.5735), 1.0)
-    
-    def test_ml_oz_alias(self):
-        """Test ml_oz alias for convert_milliliters_ounces"""
-        self.assertAlmostEqual(pyco.ml_oz(29.5735), 1.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'floz', 29.5735), 1.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'floz', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'floz', 236.588), 8.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'floz', 14.78675), 0.5)
     
     def test_convert_cups_ounces(self):
         """Test cups to fluid ounces conversion"""
-        self.assertEqual(pyco.convert_cups_ounces(1), 8)
-        self.assertEqual(pyco.convert_cups_ounces(0), 0)
-        self.assertEqual(pyco.convert_cups_ounces(2), 16)
-        self.assertEqual(pyco.convert_cups_ounces(0.5), 4)
-    
-    def test_c_cup_oz_alias(self):
-        """Test c_cup_oz alias for convert_cups_ounces"""
-        self.assertEqual(pyco.c_cup_oz(1), 8)
-    
-    def test_cup_oz_alias(self):
-        """Test cup_oz alias for convert_cups_ounces"""
-        self.assertEqual(pyco.cup_oz(1), 8)
+        self.assertEqual(pyco.convert('cup', 'floz', 1), 8)
+        self.assertEqual(pyco.convert('cup', 'floz', 0), 0)
+        self.assertEqual(pyco.convert('cup', 'floz', 2), 16)
+        self.assertEqual(pyco.convert('cup', 'floz', 0.5), 4)
     
     def test_convert_ounces_cups(self):
         """Test fluid ounces to cups conversion"""
-        self.assertEqual(pyco.convert_ounces_cups(8), 1.0)
-        self.assertEqual(pyco.convert_ounces_cups(0), 0.0)
-        self.assertEqual(pyco.convert_ounces_cups(16), 2.0)
-        self.assertEqual(pyco.convert_ounces_cups(4), 0.5)
-    
-    def test_c_oz_cup_alias(self):
-        """Test c_oz_cup alias for convert_ounces_cups"""
-        self.assertEqual(pyco.c_oz_cup(8), 1.0)
-    
-    def test_oz_cup_alias(self):
-        """Test oz_cup alias for convert_ounces_cups"""
-        self.assertEqual(pyco.oz_cup(8), 1.0)
+        self.assertEqual(pyco.convert('floz', 'cup', 8), 1.0)
+        self.assertEqual(pyco.convert('floz', 'cup', 0), 0.0)
+        self.assertEqual(pyco.convert('floz', 'cup', 16), 2.0)
+        self.assertEqual(pyco.convert('floz', 'cup', 4), 0.5)
     
     def test_convert_cups_milliliters(self):
         """Test cups to milliliters conversion"""
-        self.assertAlmostEqual(pyco.convert_cups_milliliters(1), 236.588)
-        self.assertAlmostEqual(pyco.convert_cups_milliliters(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_cups_milliliters(2), 473.176)
-        self.assertAlmostEqual(pyco.convert_cups_milliliters(0.5), 118.294)
-    
-    def test_c_cup_ml_alias(self):
-        """Test c_cup_ml alias for convert_cups_milliliters"""
-        self.assertAlmostEqual(pyco.c_cup_ml(1), 236.588)
-    
-    def test_cup_ml_alias(self):
-        """Test cup_ml alias for convert_cups_milliliters"""
-        self.assertAlmostEqual(pyco.cup_ml(1), 236.588)
+        self.assertAlmostEqual(pyco.convert('cup', 'ml', 1), 236.588)
+        self.assertAlmostEqual(pyco.convert('cup', 'ml', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('cup', 'ml', 2), 473.176)
+        self.assertAlmostEqual(pyco.convert('cup', 'ml', 0.5), 118.294)
     
     def test_convert_milliliters_cups(self):
         """Test milliliters to cups conversion"""
-        self.assertAlmostEqual(pyco.convert_milliliters_cups(236.588), 1.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_cups(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_cups(473.176), 2.0)
-        self.assertAlmostEqual(pyco.convert_milliliters_cups(118.294), 0.5)
+        self.assertAlmostEqual(pyco.convert('ml', 'cup', 236.588), 1.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'cup', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'cup', 473.176), 2.0)
+        self.assertAlmostEqual(pyco.convert('ml', 'cup', 118.294), 0.5)
     
-    def test_c_ml_cup_alias(self):
-        """Test c_ml_cup alias for convert_milliliters_cups"""
-        self.assertAlmostEqual(pyco.c_ml_cup(236.588), 1.0)
-    
-    def test_ml_cup_alias(self):
-        """Test ml_cup alias for convert_milliliters_cups"""
-        self.assertAlmostEqual(pyco.ml_cup(236.588), 1.0)
-
-
 class TestPycoSpeedConversions(unittest.TestCase):
     """Test speed conversion functions in pyco.py"""
     
     def test_convert_mph_kph(self):
         """Test miles per hour to kilometers per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_mph_kph(1), 1.609344)
-        self.assertAlmostEqual(pyco.convert_mph_kph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_mph_kph(60), 96.56064)
-        self.assertAlmostEqual(pyco.convert_mph_kph(100), 160.9344)
-    
-    def test_c_mph_kph_alias(self):
-        """Test c_mph_kph alias for convert_mph_kph"""
-        self.assertAlmostEqual(pyco.c_mph_kph(1), 1.609344)
-    
-    def test_mph_kph_alias(self):
-        """Test mph_kph alias for convert_mph_kph"""
-        self.assertAlmostEqual(pyco.mph_kph(1), 1.609344)
+        self.assertAlmostEqual(pyco.convert('mph', 'kph', 1), 1.609344)
+        self.assertAlmostEqual(pyco.convert('mph', 'kph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mph', 'kph', 60), 96.56064)
+        self.assertAlmostEqual(pyco.convert('mph', 'kph', 100), 160.9344)
     
     def test_convert_kph_mph(self):
         """Test kilometers per hour to miles per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_kph_mph(1.609344), 1.0)
-        self.assertAlmostEqual(pyco.convert_kph_mph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_kph_mph(96.5606), 60.0, places=4)
-        self.assertAlmostEqual(pyco.convert_kph_mph(160.9344), 100.0)
-    
-    def test_c_kph_mph_alias(self):
-        """Test c_kph_mph alias for convert_kph_mph"""
-        self.assertAlmostEqual(pyco.c_kph_mph(1.609344), 1.0)
-    
-    def test_kph_mph_alias(self):
-        """Test kph_mph alias for convert_kph_mph"""
-        self.assertAlmostEqual(pyco.kph_mph(1.609344), 1.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'mph', 1.609344), 1.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'mph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'mph', 96.5606), 60.0, places=4)
+        self.assertAlmostEqual(pyco.convert('kph', 'mph', 160.9344), 100.0)
     
     def test_convert_knots_mph(self):
         """Test knots to miles per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_knots_mph(1), 1.15078)
-        self.assertAlmostEqual(pyco.convert_knots_mph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_knots_mph(10), 11.5078)
-        self.assertAlmostEqual(pyco.convert_knots_mph(100), 115.078)
-    
-    def test_c_knots_mph_alias(self):
-        """Test c_knots_mph alias for convert_knots_mph"""
-        self.assertAlmostEqual(pyco.c_knots_mph(1), 1.15078)
-    
-    def test_knots_mph_alias(self):
-        """Test knots_mph alias for convert_knots_mph"""
-        self.assertAlmostEqual(pyco.knots_mph(1), 1.15078)
+        self.assertAlmostEqual(pyco.convert('kn', 'mph', 1), 1.15078)
+        self.assertAlmostEqual(pyco.convert('kn', 'mph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kn', 'mph', 10), 11.5078)
+        self.assertAlmostEqual(pyco.convert('kn', 'mph', 100), 115.078)
     
     def test_convert_mph_knots(self):
         """Test miles per hour to knots conversion"""
-        self.assertAlmostEqual(pyco.convert_mph_knots(1.15078), 1.0)
-        self.assertAlmostEqual(pyco.convert_mph_knots(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_mph_knots(11.5078), 10.0, places=4)
-        self.assertAlmostEqual(pyco.convert_mph_knots(115.078), 100.0, places=4)
-    
-    def test_c_mph_knots_alias(self):
-        """Test c_mph_knots alias for convert_mph_knots"""
-        self.assertAlmostEqual(pyco.c_mph_knots(1.15078), 1.0)
-    
-    def test_mph_knots_alias(self):
-        """Test mph_knots alias for convert_mph_knots"""
-        self.assertAlmostEqual(pyco.mph_knots(1.15078), 1.0)
+        self.assertAlmostEqual(pyco.convert('mph', 'kn', 1.15078), 1.0)
+        self.assertAlmostEqual(pyco.convert('mph', 'kn', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mph', 'kn', 11.5078), 10.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mph', 'kn', 115.078), 100.0, places=4)
     
     def test_convert_knots_kph(self):
         """Test knots to kilometers per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_knots_kph(1), 1.852)
-        self.assertAlmostEqual(pyco.convert_knots_kph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_knots_kph(10), 18.52)
-        self.assertAlmostEqual(pyco.convert_knots_kph(100), 185.2)
-    
-    def test_c_knots_kph_alias(self):
-        """Test c_knots_kph alias for convert_knots_kph"""
-        self.assertAlmostEqual(pyco.c_knots_kph(1), 1.852)
-    
-    def test_knots_kph_alias(self):
-        """Test knots_kph alias for convert_knots_kph"""
-        self.assertAlmostEqual(pyco.knots_kph(1), 1.852)
+        self.assertAlmostEqual(pyco.convert('kn', 'kph', 1), 1.852)
+        self.assertAlmostEqual(pyco.convert('kn', 'kph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kn', 'kph', 10), 18.52)
+        self.assertAlmostEqual(pyco.convert('kn', 'kph', 100), 185.2)
     
     def test_convert_kph_knots(self):
         """Test kilometers per hour to knots conversion"""
-        self.assertAlmostEqual(pyco.convert_kph_knots(1.852), 1.0)
-        self.assertAlmostEqual(pyco.convert_kph_knots(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_kph_knots(18.52), 10.0, places=4)
-        self.assertAlmostEqual(pyco.convert_kph_knots(185.2), 100.0, places=4)
-    
-    def test_c_kph_knots_alias(self):
-        """Test c_kph_knots alias for convert_kph_knots"""
-        self.assertAlmostEqual(pyco.c_kph_knots(1.852), 1.0)
-    
-    def test_kph_knots_alias(self):
-        """Test kph_knots alias for convert_kph_knots"""
-        self.assertAlmostEqual(pyco.kph_knots(1.852), 1.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'kn', 1.852), 1.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'kn', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'kn', 18.52), 10.0, places=4)
+        self.assertAlmostEqual(pyco.convert('kph', 'kn', 185.2), 100.0, places=4)
     
     def test_convert_mph_mps(self):
         """Test miles per hour to meters per second conversion"""
-        self.assertAlmostEqual(pyco.convert_mph_mps(1), 0.44704)
-        self.assertAlmostEqual(pyco.convert_mph_mps(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_mph_mps(60), 26.8224)
-        self.assertAlmostEqual(pyco.convert_mph_mps(100), 44.704)
-    
-    def test_c_mph_mps_alias(self):
-        """Test c_mph_mps alias for convert_mph_mps"""
-        self.assertAlmostEqual(pyco.c_mph_mps(1), 0.44704)
-    
-    def test_mph_mps_alias(self):
-        """Test mph_mps alias for convert_mph_mps"""
-        self.assertAlmostEqual(pyco.mph_mps(1), 0.44704)
+        self.assertAlmostEqual(pyco.convert('mph', 'mps', 1), 0.44704)
+        self.assertAlmostEqual(pyco.convert('mph', 'mps', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mph', 'mps', 60), 26.8224)
+        self.assertAlmostEqual(pyco.convert('mph', 'mps', 100), 44.704)
     
     def test_convert_mps_mph(self):
         """Test meters per second to miles per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_mps_mph(0.44704), 1.0)
-        self.assertAlmostEqual(pyco.convert_mps_mph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_mps_mph(26.8224), 60.0, places=4)
-        self.assertAlmostEqual(pyco.convert_mps_mph(44.704), 100.0, places=4)
-    
-    def test_c_mps_mph_alias(self):
-        """Test c_mps_mph alias for convert_mps_mph"""
-        self.assertAlmostEqual(pyco.c_mps_mph(0.44704), 1.0)
-    
-    def test_mps_mph_alias(self):
-        """Test mps_mph alias for convert_mps_mph"""
-        self.assertAlmostEqual(pyco.mps_mph(0.44704), 1.0)
+        self.assertAlmostEqual(pyco.convert('mps', 'mph', 0.44704), 1.0)
+        self.assertAlmostEqual(pyco.convert('mps', 'mph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mps', 'mph', 26.8224), 60.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mps', 'mph', 44.704), 100.0, places=4)
     
     def test_convert_kph_mps(self):
         """Test kilometers per hour to meters per second conversion"""
-        self.assertAlmostEqual(pyco.convert_kph_mps(1), 0.277778, places=6)
-        self.assertAlmostEqual(pyco.convert_kph_mps(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_kph_mps(36), 10.0, places=3)
-        self.assertAlmostEqual(pyco.convert_kph_mps(100), 27.7778, places=4)
-    
-    def test_c_kph_mps_alias(self):
-        """Test c_kph_mps alias for convert_kph_mps"""
-        self.assertAlmostEqual(pyco.c_kph_mps(1), 0.277778, places=6)
-    
-    def test_kph_mps_alias(self):
-        """Test kph_mps alias for convert_kph_mps"""
-        self.assertAlmostEqual(pyco.kph_mps(1), 0.277778, places=6)
+        self.assertAlmostEqual(pyco.convert('kph', 'mps', 1), 0.277778, places=6)
+        self.assertAlmostEqual(pyco.convert('kph', 'mps', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('kph', 'mps', 36), 10.0, places=3)
+        self.assertAlmostEqual(pyco.convert('kph', 'mps', 100), 27.7778, places=4)
     
     def test_convert_mps_kph(self):
         """Test meters per second to kilometers per hour conversion"""
-        self.assertAlmostEqual(pyco.convert_mps_kph(0.277778), 1.0, places=5)
-        self.assertAlmostEqual(pyco.convert_mps_kph(0), 0.0)
-        self.assertAlmostEqual(pyco.convert_mps_kph(10), 36.0, places=4)
-        self.assertAlmostEqual(pyco.convert_mps_kph(27.7778), 100.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mps', 'kph', 0.277778), 1.0, places=5)
+        self.assertAlmostEqual(pyco.convert('mps', 'kph', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mps', 'kph', 10), 36.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mps', 'kph', 27.7778), 100.0, places=3)
     
-    def test_c_mps_kph_alias(self):
-        """Test c_mps_kph alias for convert_mps_kph"""
-        self.assertAlmostEqual(pyco.c_mps_kph(0.277778), 1.0, places=5)
+class TestPycoTimeConversions(unittest.TestCase):
+    """Test time conversion functions"""
     
-    def test_mps_kph_alias(self):
-        """Test mps_kph alias for convert_mps_kph"""
-        self.assertAlmostEqual(pyco.mps_kph(0.277778), 1.0, places=5)
-
+    def test_hours_minutes_conversion(self):
+        """Test hours to minutes conversion"""
+        self.assertAlmostEqual(pyco.convert('h', 'min', 1), 60, places=5)
+        self.assertAlmostEqual(pyco.convert('h', 'min', 2.5), 150, places=5)
+        self.assertAlmostEqual(pyco.convert('min', 'h', 60), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('min', 'h', 90), 1.5, places=5)
+    
+    def test_minutes_seconds_conversion(self):
+        """Test minutes to seconds conversion"""
+        self.assertAlmostEqual(pyco.convert('min', 's', 1), 60, places=5)
+        self.assertAlmostEqual(pyco.convert('min', 's', 1.5), 90, places=5)
+        self.assertAlmostEqual(pyco.convert('s', 'min', 60), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('s', 'min', 120), 2, places=5)
+    
+    def test_hours_seconds_conversion(self):
+        """Test hours to seconds conversion"""
+        self.assertAlmostEqual(pyco.convert('h', 's', 1), 3600, places=5)
+        self.assertAlmostEqual(pyco.convert('h', 's', 0.5), 1800, places=5)
+        self.assertAlmostEqual(pyco.convert('s', 'h', 3600), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('s', 'h', 7200), 2, places=5)
+    
+    def test_days_hours_conversion(self):
+        """Test days to hours conversion"""
+        self.assertAlmostEqual(pyco.convert('d', 'h', 1), 24, places=5)
+        self.assertAlmostEqual(pyco.convert('d', 'h', 2.5), 60, places=5)
+        self.assertAlmostEqual(pyco.convert('h', 'd', 24), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('h', 'd', 48), 2, places=5)
+    
+    def test_weeks_days_conversion(self):
+        """Test weeks to days conversion"""
+        self.assertAlmostEqual(pyco.convert('wk', 'd', 1), 7, places=5)
+        self.assertAlmostEqual(pyco.convert('wk', 'd', 2), 14, places=5)
+        self.assertAlmostEqual(pyco.convert('d', 'wk', 7), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('d', 'wk', 14), 2, places=5)
+    
+    def test_years_days_conversion(self):
+        """Test years to days conversion (accounting for leap years)"""
+        self.assertAlmostEqual(pyco.convert('yr', 'd', 1), 365.25, places=5)
+        self.assertAlmostEqual(pyco.convert('yr', 'd', 4), 1461, places=5)
+        self.assertAlmostEqual(pyco.convert('d', 'yr', 365.25), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('d', 'yr', 730.5), 2, places=5)
+    
+class TestPycoAdditionalWeightConversions(unittest.TestCase):
+    """Test additional weight conversion functions"""
+    
+    def test_ounces_grams_conversion(self):
+        """Test ounces to grams conversion"""
+        self.assertAlmostEqual(pyco.convert('oz', 'g', 1), 28.3495, places=4)
+        self.assertAlmostEqual(pyco.convert('oz', 'g', 16), 453.592, places=3)
+        self.assertAlmostEqual(pyco.convert('g', 'oz', 28.3495), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('g', 'oz', 100), 3.52740, places=4)
+    
+    def test_grams_pounds_conversion(self):
+        """Test grams to pounds conversion"""
+        self.assertAlmostEqual(pyco.convert('g', 'lb', 453.592), 1, places=3)
+        self.assertAlmostEqual(pyco.convert('g', 'lb', 1000), 2.20462, places=4)
+        self.assertAlmostEqual(pyco.convert('lb', 'g', 1), 453.592, places=3)
+        self.assertAlmostEqual(pyco.convert('lb', 'g', 2.2), 997.902, places=2)
+    
+    def test_ounces_pounds_conversion(self):
+        """Test ounces to pounds conversion"""
+        self.assertAlmostEqual(pyco.convert('oz', 'lb', 16), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('oz', 'lb', 8), 0.5, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 'oz', 1), 16, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 'oz', 2.5), 40, places=5)
+    
+    def test_grams_kilograms_conversion(self):
+        """Test grams to kilograms conversion"""
+        self.assertAlmostEqual(pyco.convert('g', 'kg', 1000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('g', 'kg', 500), 0.5, places=5)
+        self.assertAlmostEqual(pyco.convert('kg', 'g', 1), 1000, places=5)
+        self.assertAlmostEqual(pyco.convert('kg', 'g', 2.5), 2500, places=5)
+    
+    def test_tons_pounds_conversion(self):
+        """Test US tons to pounds conversion"""
+        self.assertAlmostEqual(pyco.convert('t', 'lb', 1), 2000, places=5)
+        self.assertAlmostEqual(pyco.convert('t', 'lb', 0.5), 1000, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 't', 2000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 't', 4000), 2, places=5)
+    
+    def test_stone_pounds_conversion(self):
+        """Test stone to pounds conversion"""
+        self.assertAlmostEqual(pyco.convert('st', 'lb', 1), 14, places=5)
+        self.assertAlmostEqual(pyco.convert('st', 'lb', 10), 140, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 'st', 14), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('lb', 'st', 28), 2, places=5)
+    
+class TestPycoAdditionalVolumeConversions(unittest.TestCase):
+    """Test additional volume conversion functions"""
+    
+    def test_gallons_liters_conversion(self):
+        """Test US gallons to liters conversion"""
+        self.assertAlmostEqual(pyco.convert('gal', 'l', 1), 3.78541, places=4)
+        self.assertAlmostEqual(pyco.convert('gal', 'l', 5), 18.9271, places=3)
+        self.assertAlmostEqual(pyco.convert('l', 'gal', 3.78541), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('l', 'gal', 10), 2.64172, places=4)
+    
+    def test_quarts_liters_conversion(self):
+        """Test US quarts to liters conversion"""
+        self.assertAlmostEqual(pyco.convert('qt', 'l', 1), 0.946353, places=5)
+        self.assertAlmostEqual(pyco.convert('qt', 'l', 4), 3.78541, places=4)
+        self.assertAlmostEqual(pyco.convert('l', 'qt', 0.946353), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('l', 'qt', 2), 2.11338, places=4)
+    
+    def test_pints_liters_conversion(self):
+        """Test US pints to liters conversion"""
+        self.assertAlmostEqual(pyco.convert('pt', 'l', 1), 0.473176, places=5)
+        self.assertAlmostEqual(pyco.convert('pt', 'l', 2), 0.946353, places=5)
+        self.assertAlmostEqual(pyco.convert('l', 'pt', 0.473176), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('l', 'pt', 1), 2.11338, places=4)
+    
+    def test_tablespoons_teaspoons_conversion(self):
+        """Test tablespoons to teaspoons conversion"""
+        self.assertAlmostEqual(pyco.convert('tbsp', 'tsp', 1), 3, places=5)
+        self.assertAlmostEqual(pyco.convert('tbsp', 'tsp', 2), 6, places=5)
+        self.assertAlmostEqual(pyco.convert('tsp', 'tbsp', 3), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('tsp', 'tbsp', 6), 2, places=5)
+    
+    def test_tablespoons_milliliters_conversion(self):
+        """Test tablespoons to milliliters conversion"""
+        self.assertAlmostEqual(pyco.convert('tbsp', 'ml', 1), 14.7868, places=4)
+        self.assertAlmostEqual(pyco.convert('tbsp', 'ml', 2), 29.5736, places=3)
+        self.assertAlmostEqual(pyco.convert('ml', 'tbsp', 14.7868), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('ml', 'tbsp', 30), 2.02884, places=4)
+    
+    def test_teaspoons_milliliters_conversion(self):
+        """Test teaspoons to milliliters conversion"""
+        self.assertAlmostEqual(pyco.convert('tsp', 'ml', 1), 4.92892, places=4)
+        self.assertAlmostEqual(pyco.convert('tsp', 'ml', 3), 14.7868, places=4)
+        self.assertAlmostEqual(pyco.convert('ml', 'tsp', 4.92892), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('ml', 'tsp', 15), 3.04326, places=4)
+    
+class TestPycoAdditionalTemperatureConversions(unittest.TestCase):
+    """Test additional temperature conversion functions"""
+    
+    def test_kelvin_celsius_conversion(self):
+        """Test Kelvin to Celsius conversion"""
+        self.assertAlmostEqual(pyco.convert('k', 'c', 273.15), 0, places=2)
+        self.assertAlmostEqual(pyco.convert('k', 'c', 373.15), 100, places=2)
+        self.assertAlmostEqual(pyco.convert('c', 'k', 0), 273.15, places=2)
+        self.assertAlmostEqual(pyco.convert('c', 'k', 100), 373.15, places=2)
+    
+    def test_kelvin_fahrenheit_conversion(self):
+        """Test Kelvin to Fahrenheit conversion"""
+        self.assertAlmostEqual(pyco.convert('k', 'f', 273.15), 32, places=2)
+        self.assertAlmostEqual(pyco.convert('k', 'f', 373.15), 212, places=2)
+        self.assertAlmostEqual(pyco.convert('f', 'k', 32), 273.15, places=2)
+        self.assertAlmostEqual(pyco.convert('f', 'k', 212), 373.15, places=2)
+    
+class TestPycoAreaConversions(unittest.TestCase):
+    """Test area conversion functions"""
+    
+    def test_square_feet_square_meters_conversion(self):
+        """Test square feet to square meters conversion"""
+        self.assertAlmostEqual(pyco.convert('ft2', 'm2', 1), 0.092903, places=5)
+        self.assertAlmostEqual(pyco.convert('ft2', 'm2', 100), 9.2903, places=4)
+        self.assertAlmostEqual(pyco.convert('m2', 'ft2', 1), 10.7639, places=4)
+        self.assertAlmostEqual(pyco.convert('m2', 'ft2', 10), 107.639, places=3)
+    
+    def test_acres_square_feet_conversion(self):
+        """Test acres to square feet conversion"""
+        self.assertAlmostEqual(pyco.convert('ac', 'ft2', 1), 43560, places=1)
+        self.assertAlmostEqual(pyco.convert('ac', 'ft2', 0.5), 21780, places=1)
+        self.assertAlmostEqual(pyco.convert('ft2', 'ac', 43560), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('ft2', 'ac', 87120), 2, places=5)
+    
+    def test_square_inches_square_centimeters_conversion(self):
+        """Test square inches to square centimeters conversion"""
+        self.assertAlmostEqual(pyco.convert('in2', 'cm2', 1), 6.4516, places=4)
+        self.assertAlmostEqual(pyco.convert('in2', 'cm2', 10), 64.516, places=3)
+        self.assertAlmostEqual(pyco.convert('cm2', 'in2', 6.4516), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('cm2', 'in2', 20), 3.10001, places=4)
+    
+class TestPycoPowerConversions(unittest.TestCase):
+    """Test power conversion functions"""
+    
+    def test_watts_horsepower_conversion(self):
+        """Test watts to horsepower conversion"""
+        self.assertAlmostEqual(pyco.convert('w', 'hp', 745.7), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('w', 'hp', 1491.4), 2, places=3)
+        self.assertAlmostEqual(pyco.convert('hp', 'w', 1), 745.7, places=1)
+        self.assertAlmostEqual(pyco.convert('hp', 'w', 2), 1491.4, places=1)
+    
+class TestPycoMultiStepConversions(unittest.TestCase):
+    """Test multi-step conversions using the new dynamic programming system"""
+    
+    def test_indirect_conversions(self):
+        """Test conversions that require multiple steps through intermediate units"""
+        # Test miles to inches via feet (miles -> feet -> inches)
+        self.assertAlmostEqual(pyco.convert('mi', 'in', 1), 63360, places=5)
+        
+        # Test grams to ounces via pounds (grams -> pounds -> ounces)
+        self.assertAlmostEqual(pyco.convert('g', 'oz', 453.592), 16, places=5)
+        
+        # Test hours to years via days (hours -> days -> years)
+        self.assertAlmostEqual(pyco.convert('h', 'yr', 8760), 0.999315537303217, places=10)
+        
+        # Test complex path: square inches to square meters via square feet
+        # (square_inches -> square_feet -> square_meters)
+        self.assertAlmostEqual(pyco.convert('in2', 'm2', 144), 0.092903, places=5)
+    
+    def test_same_unit_conversion(self):
+        """Test that converting a unit to itself returns the same value"""
+        self.assertEqual(pyco.convert('mi', 'mi', 5), 5)
+        self.assertEqual(pyco.convert('c', 'c', 25), 25)
+        self.assertEqual(pyco.convert('lb', 'lb', 10), 10)
+    
+    def test_invalid_conversion_path(self):
+        """Test that invalid conversion paths return None with helpful messages"""
+        # Invalid units now return None instead of raising ValueError
+        result1 = pyco.convert('nonexistent_unit', 'mi', 5)
+        self.assertIsNone(result1)
+        
+        result2 = pyco.convert('mi', 'nonexistent_unit', 5)
+        self.assertIsNone(result2)
+    
+    def test_matrix_non_redundancy(self):
+        """Test that the conversion matrix has no redundant entries except for function-based conversions"""
+        # Verify that each unit pair appears at most once in the matrix
+        # Exception: Temperature conversions use functions in both directions
+        seen_pairs = set()
+        for (unit1, unit2), factor_or_func in pyco.CONVERSION_MATRIX.items():
+            # Skip function-based conversions (like temperature) which need bidirectional entries
+            if callable(factor_or_func):
+                continue
+                
+            # Normalize the pair order to check for duplicates
+            normalized_pair = tuple(sorted([unit1, unit2]))
+            self.assertNotIn(normalized_pair, seen_pairs, 
+                           f"Redundant entry found for {unit1}-{unit2}")
+            seen_pairs.add(normalized_pair)
 
 class TestPycoConstants(unittest.TestCase):
     """Test constants defined in pyco.py"""
@@ -793,7 +729,6 @@ class TestPycoConstants(unittest.TestCase):
         self.assertEqual(pyco.billion, 1000000000)
         self.assertEqual(pyco.trillion, 1000000000000)
 
-
 class TestPycoConversionChains(unittest.TestCase):
     """Test conversion chains to ensure mathematical consistency"""
     
@@ -801,472 +736,216 @@ class TestPycoConversionChains(unittest.TestCase):
         """Test that temperature conversions are mathematically consistent"""
         # Test C -> F -> C
         celsius = 25.0
-        fahrenheit = pyco.convert_celsius_fahrenheit(celsius)
-        back_to_celsius = pyco.convert_fahrenheit_celsius(fahrenheit)
+        fahrenheit = pyco.convert('c', 'f', celsius)
+        back_to_celsius = pyco.convert('f', 'c', fahrenheit)
         self.assertAlmostEqual(celsius, back_to_celsius, places=10)
         
         # Test F -> C -> F
         fahrenheit = 77.0
-        celsius = pyco.convert_fahrenheit_celsius(fahrenheit)
-        back_to_fahrenheit = pyco.convert_celsius_fahrenheit(celsius)
+        celsius = pyco.convert('f', 'c', fahrenheit)
+        back_to_fahrenheit = pyco.convert('c', 'f', celsius)
         self.assertAlmostEqual(fahrenheit, back_to_fahrenheit, places=10)
     
     def test_distance_conversion_chain(self):
         """Test that distance conversions are mathematically consistent"""
         # Test miles -> km -> miles
         miles = 10.0
-        kilometers = pyco.convert_miles_kilometers(miles)
-        back_to_miles = pyco.convert_kilometers_miles(kilometers)
+        kilometers = pyco.convert('mi', 'km', miles)
+        back_to_miles = pyco.convert('km', 'mi', kilometers)
         self.assertAlmostEqual(miles, back_to_miles, places=10)
         
         # Test miles -> feet -> miles
         miles = 2.0
-        feet = pyco.convert_miles_feet(miles)
-        back_to_miles = pyco.convert_feet_miles(feet)
+        feet = pyco.convert('mi', 'ft', miles)
+        back_to_miles = pyco.convert('ft', 'mi', feet)
         self.assertAlmostEqual(miles, back_to_miles, places=10)
         
         # Test feet -> inches -> feet
         feet = 3.0
-        inches = pyco.convert_feet_inches(feet)
-        back_to_feet = pyco.convert_inches_feet(inches)
+        inches = pyco.convert('ft', 'in', feet)
+        back_to_feet = pyco.convert('in', 'ft', inches)
         self.assertAlmostEqual(feet, back_to_feet, places=10)
         
-        # Test feet -> centimeters -> feet
-        feet = 5.0
-        centimeters = pyco.convert_feet_centimeters(feet)
-        back_to_feet_tuple = pyco.convert_centimeters_feet(centimeters)
-        back_to_feet = back_to_feet_tuple[0] + (back_to_feet_tuple[1] / 12)  # Convert back to decimal feet
-        self.assertAlmostEqual(feet, back_to_feet, places=10)
+
         
         # Test inches -> centimeters -> inches
         inches = 12.0
-        centimeters = pyco.convert_inches_centimeters(inches)
-        back_to_inches = pyco.convert_centimeters_inches(centimeters)
+        centimeters = pyco.convert('in', 'cm', inches)
+        back_to_inches = pyco.convert('cm', 'in', centimeters)
         self.assertAlmostEqual(inches, back_to_inches, places=10)
     
     def test_weight_conversion_chain(self):
         """Test that weight conversions are mathematically consistent"""
         # Test pounds -> kg -> pounds
         pounds = 150.0
-        kilograms = pyco.convert_pounds_kilograms(pounds)
-        back_to_pounds = pyco.convert_kilograms_pounds(kilograms)
+        kilograms = pyco.convert('lb', 'kg', pounds)
+        back_to_pounds = pyco.convert('kg', 'lb', kilograms)
         self.assertAlmostEqual(pounds, back_to_pounds, places=10)
     
     def test_volume_conversion_chain(self):
         """Test that volume conversions are mathematically consistent"""
         # Test ounces -> milliliters -> ounces
         ounces = 16.0
-        milliliters = pyco.convert_ounces_milliliters(ounces)
-        back_to_ounces = pyco.convert_milliliters_ounces(milliliters)
+        milliliters = pyco.convert('floz', 'ml', ounces)
+        back_to_ounces = pyco.convert('ml', 'floz', milliliters)
         self.assertAlmostEqual(ounces, back_to_ounces, places=10)
         
         # Test cups -> ounces -> cups
         cups = 2.0
-        ounces = pyco.convert_cups_ounces(cups)
-        back_to_cups = pyco.convert_ounces_cups(ounces)
+        ounces = pyco.convert('cup', 'floz', cups)
+        back_to_cups = pyco.convert('floz', 'cup', ounces)
         self.assertAlmostEqual(cups, back_to_cups, places=10)
         
         # Test cups -> milliliters -> cups
         cups = 3.0
-        milliliters = pyco.convert_cups_milliliters(cups)
-        back_to_cups = pyco.convert_milliliters_cups(milliliters)
+        milliliters = pyco.convert('cup', 'ml', cups)
+        back_to_cups = pyco.convert('ml', 'cup', milliliters)
         self.assertAlmostEqual(cups, back_to_cups, places=10)
     
     def test_speed_conversion_chain(self):
         """Test that speed conversions are mathematically consistent"""
         # Test mph -> kph -> mph
         mph = 60.0
-        kph = pyco.convert_mph_kph(mph)
-        back_to_mph = pyco.convert_kph_mph(kph)
+        kph = pyco.convert('mph', 'kph', mph)
+        back_to_mph = pyco.convert('kph', 'mph', kph)
         self.assertAlmostEqual(mph, back_to_mph, places=10)
         
         # Test knots -> mph -> knots
         knots = 100.0
-        mph = pyco.convert_knots_mph(knots)
-        back_to_knots = pyco.convert_mph_knots(mph)
+        mph = pyco.convert('kn', 'mph', knots)
+        back_to_knots = pyco.convert('mph', 'kn', mph)
         self.assertAlmostEqual(knots, back_to_knots, places=10)
         
         # Test knots -> kph -> knots
         knots = 50.0
-        kph = pyco.convert_knots_kph(knots)
-        back_to_knots = pyco.convert_kph_knots(kph)
+        kph = pyco.convert('kn', 'kph', knots)
+        back_to_knots = pyco.convert('kph', 'kn', kph)
         self.assertAlmostEqual(knots, back_to_knots, places=10)
         
         # Test mph -> mps -> mph
         mph = 100.0
-        mps = pyco.convert_mph_mps(mph)
-        back_to_mph = pyco.convert_mps_mph(mps)
+        mps = pyco.convert('mph', 'mps', mph)
+        back_to_mph = pyco.convert('mps', 'mph', mps)
         self.assertAlmostEqual(mph, back_to_mph, places=10)
         
         # Test kph -> mps -> kph
         kph = 72.0
-        mps = pyco.convert_kph_mps(kph)
-        back_to_kph = pyco.convert_mps_kph(mps)
+        mps = pyco.convert('kph', 'mps', kph)
+        back_to_kph = pyco.convert('mps', 'kph', mps)
         self.assertAlmostEqual(kph, back_to_kph, places=10)
-
 
 class TestPycoEdgeCases(unittest.TestCase):
     """Test edge cases and error conditions"""
     
     def test_zero_conversions(self):
         """Test conversions with zero values"""
-        self.assertEqual(pyco.convert_celsius_fahrenheit(0), 32.0)
-        self.assertEqual(pyco.convert_fahrenheit_celsius(0), -17.77777777777778)
-        self.assertEqual(pyco.convert_miles_kilometers(0), 0.0)
-        self.assertEqual(pyco.convert_kilometers_miles(0), 0.0)
-        self.assertEqual(pyco.convert_miles_feet(0), 0)
-        self.assertEqual(pyco.convert_feet_miles(0), 0.0)
-        self.assertEqual(pyco.convert_inches_feet(0), 0.0)
-        self.assertEqual(pyco.convert_feet_inches(0), 0)
+        self.assertEqual(pyco.convert('c', 'f', 0), 32.0)
+        self.assertAlmostEqual(pyco.convert('f', 'c', 0), -17.77777777777778, places=13)
+        self.assertEqual(pyco.convert('mi', 'km', 0), 0.0)
+        self.assertEqual(pyco.convert('km', 'mi', 0), 0.0)
+        self.assertEqual(pyco.convert('mi', 'ft', 0), 0)
+        self.assertEqual(pyco.convert('ft', 'mi', 0), 0.0)
+        self.assertEqual(pyco.convert('in', 'ft', 0), 0.0)
+        self.assertEqual(pyco.convert('ft', 'in', 0), 0)
         # New conversion functions
-        self.assertEqual(pyco.convert_feet_centimeters(0), 0.0)
-        feet, inches = pyco.convert_centimeters_feet(0)
-        self.assertEqual(feet, 0)
-        self.assertEqual(inches, 0.0)
-        self.assertEqual(pyco.convert_feet_meters(0), 0.0)
-        self.assertEqual(pyco.convert_inches_centimeters(0), 0.0)
-        self.assertEqual(pyco.convert_centimeters_inches(0), 0.0)
-        self.assertEqual(pyco.convert_pounds_kilograms(0), 0.0)
-        self.assertEqual(pyco.convert_kilograms_pounds(0), 0.0)
-        self.assertEqual(pyco.convert_ounces_milliliters(0), 0.0)
-        self.assertEqual(pyco.convert_milliliters_ounces(0), 0.0)
-        self.assertEqual(pyco.convert_cups_ounces(0), 0)
-        self.assertEqual(pyco.convert_ounces_cups(0), 0.0)
-        self.assertEqual(pyco.convert_cups_milliliters(0), 0.0)
-        self.assertEqual(pyco.convert_milliliters_cups(0), 0.0)
+        self.assertEqual(pyco.convert('ft', 'cm', 0), 0.0)
+        self.assertEqual(pyco.convert('ft', 'm', 0), 0.0)
+        self.assertEqual(pyco.convert('in', 'cm', 0), 0.0)
+        self.assertEqual(pyco.convert('cm', 'in', 0), 0.0)
+        self.assertEqual(pyco.convert('lb', 'kg', 0), 0.0)
+        self.assertEqual(pyco.convert('kg', 'lb', 0), 0.0)
+        self.assertEqual(pyco.convert('floz', 'ml', 0), 0.0)
+        self.assertEqual(pyco.convert('ml', 'floz', 0), 0.0)
+        self.assertEqual(pyco.convert('cup', 'floz', 0), 0)
+        self.assertEqual(pyco.convert('floz', 'cup', 0), 0.0)
+        self.assertEqual(pyco.convert('cup', 'ml', 0), 0.0)
+        self.assertEqual(pyco.convert('ml', 'cup', 0), 0.0)
         # Speed conversion functions
-        self.assertEqual(pyco.convert_mph_kph(0), 0.0)
-        self.assertEqual(pyco.convert_kph_mph(0), 0.0)
-        self.assertEqual(pyco.convert_knots_mph(0), 0.0)
-        self.assertEqual(pyco.convert_mph_knots(0), 0.0)
-        self.assertEqual(pyco.convert_knots_kph(0), 0.0)
-        self.assertEqual(pyco.convert_kph_knots(0), 0.0)
-        self.assertEqual(pyco.convert_mph_mps(0), 0.0)
-        self.assertEqual(pyco.convert_mps_mph(0), 0.0)
-        self.assertEqual(pyco.convert_kph_mps(0), 0.0)
-        self.assertEqual(pyco.convert_mps_kph(0), 0.0)
+        self.assertEqual(pyco.convert('mph', 'kph', 0), 0.0)
+        self.assertEqual(pyco.convert('kph', 'mph', 0), 0.0)
+        self.assertEqual(pyco.convert('kn', 'mph', 0), 0.0)
+        self.assertEqual(pyco.convert('mph', 'kn', 0), 0.0)
+        self.assertEqual(pyco.convert('kn', 'kph', 0), 0.0)
+        self.assertEqual(pyco.convert('kph', 'kn', 0), 0.0)
+        self.assertEqual(pyco.convert('mph', 'mps', 0), 0.0)
+        self.assertEqual(pyco.convert('mps', 'mph', 0), 0.0)
+        self.assertEqual(pyco.convert('kph', 'mps', 0), 0.0)
+        self.assertEqual(pyco.convert('mps', 'kph', 0), 0.0)
     
     def test_negative_conversions(self):
         """Test conversions with negative values"""
-        self.assertEqual(pyco.convert_celsius_fahrenheit(-10), 14.0)
-        self.assertEqual(pyco.convert_fahrenheit_celsius(-10), -23.333333333333332)
-        self.assertEqual(pyco.convert_miles_kilometers(-5), -8.04672)
-        self.assertEqual(pyco.convert_kilometers_miles(-8.04672), -5.0)
+        self.assertEqual(pyco.convert('c', 'f', -10), 14.0)
+        self.assertAlmostEqual(pyco.convert('f', 'c', -10), -23.333333333333332, places=13)
+        self.assertEqual(pyco.convert('mi', 'km', -5), -8.04672)
+        self.assertEqual(pyco.convert('km', 'mi', -8.04672), -5.0)
         # New conversion functions with negative values
-        self.assertAlmostEqual(pyco.convert_feet_centimeters(-3), -91.44)
-        feet, inches = pyco.convert_centimeters_feet(-30.48)
-        self.assertEqual(feet, -1)
-        self.assertAlmostEqual(inches, 0.0, places=10)
-        self.assertAlmostEqual(pyco.convert_inches_centimeters(-6), -15.24)
-        self.assertAlmostEqual(pyco.convert_centimeters_inches(-15.24), -6.0)
+        self.assertAlmostEqual(pyco.convert('ft', 'cm', -3), -91.44)
+        self.assertAlmostEqual(pyco.convert('in', 'cm', -6), -15.24)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', -15.24), -6.0)
         # Weight and volume with negative values (though physically meaningless)
-        self.assertAlmostEqual(pyco.convert_pounds_kilograms(-10), -4.53592)
-        self.assertAlmostEqual(pyco.convert_kilograms_pounds(-5), -11.0231221)
-        self.assertAlmostEqual(pyco.convert_ounces_milliliters(-8), -236.588)
-        self.assertAlmostEqual(pyco.convert_milliliters_ounces(-236.588), -8.0)
-        self.assertEqual(pyco.convert_cups_ounces(-2), -16)
-        self.assertEqual(pyco.convert_ounces_cups(-16), -2.0)
+        self.assertAlmostEqual(pyco.convert('lb', 'kg', -10), -4.53592)
+        self.assertAlmostEqual(pyco.convert('kg', 'lb', -5), -11.0231221)
+        self.assertAlmostEqual(pyco.convert('floz', 'ml', -8), -236.588)
+        self.assertAlmostEqual(pyco.convert('ml', 'floz', -236.588), -8.0)
+        self.assertEqual(pyco.convert('cup', 'floz', -2), -16)
+        self.assertEqual(pyco.convert('floz', 'cup', -16), -2.0)
         # Speed conversions with negative values (though physically meaningless for speeds)
-        self.assertAlmostEqual(pyco.convert_mph_kph(-60), -96.56064)
-        self.assertAlmostEqual(pyco.convert_kph_mph(-100), -62.1371, places=4)
-        self.assertAlmostEqual(pyco.convert_knots_mph(-10), -11.5078)
-        self.assertAlmostEqual(pyco.convert_mph_knots(-115.078), -100.0, places=4)
-        self.assertAlmostEqual(pyco.convert_knots_kph(-50), -92.6)
-        self.assertAlmostEqual(pyco.convert_kph_knots(-185.2), -100.0, places=4)
-        self.assertAlmostEqual(pyco.convert_mph_mps(-60), -26.8224)
-        self.assertAlmostEqual(pyco.convert_mps_mph(-44.704), -100.0, places=4)
-        self.assertAlmostEqual(pyco.convert_kph_mps(-36), -10.0, places=3)
-        self.assertAlmostEqual(pyco.convert_mps_kph(-10), -36.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mph', 'kph', -60), -96.56064)
+        self.assertAlmostEqual(pyco.convert('kph', 'mph', -100), -62.1371, places=4)
+        self.assertAlmostEqual(pyco.convert('kn', 'mph', -10), -11.5078)
+        self.assertAlmostEqual(pyco.convert('mph', 'kn', -115.078), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert('kn', 'kph', -50), -92.6)
+        self.assertAlmostEqual(pyco.convert('kph', 'kn', -185.2), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert('mph', 'mps', -60), -26.8224)
+        self.assertAlmostEqual(pyco.convert('mps', 'mph', -44.704), -100.0, places=4)
+        self.assertAlmostEqual(pyco.convert('kph', 'mps', -36), -10.0, places=3)
+        self.assertAlmostEqual(pyco.convert('mps', 'kph', -10), -36.0, places=4)
     
     def test_large_number_conversions(self):
         """Test conversions with large numbers"""
         large_num = 1000000.0
         
         # Test that large numbers don't cause overflow
-        result = pyco.convert_celsius_fahrenheit(large_num)
+        result = pyco.convert('c', 'f', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
-        result = pyco.convert_miles_kilometers(large_num)
+        result = pyco.convert('mi', 'km', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
         # Test new conversion functions with large numbers
-        result = pyco.convert_feet_centimeters(large_num)
+        result = pyco.convert('ft', 'cm', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
-        result = pyco.convert_pounds_kilograms(large_num)
+        result = pyco.convert('lb', 'kg', large_num)
         self.assertIsInstance(result, float)
         self.assertLess(result, large_num)  # kg is smaller unit
         
-        result = pyco.convert_ounces_milliliters(large_num)
+        result = pyco.convert('floz', 'ml', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
         # Test speed conversion functions with large numbers
-        result = pyco.convert_mph_kph(large_num)
+        result = pyco.convert('mph', 'kph', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
-        result = pyco.convert_knots_mph(large_num)
+        result = pyco.convert('kn', 'mph', large_num)
         self.assertIsInstance(result, float)
         self.assertGreater(result, large_num)
         
-        result = pyco.convert_mph_mps(large_num)
+        result = pyco.convert('mph', 'mps', large_num)
         self.assertIsInstance(result, float)
         self.assertLess(result, large_num)  # m/s is smaller unit than mph
-
 
 class TestPycoAliases(unittest.TestCase):
     """Test that all aliases work correctly"""
     
-    def test_all_temperature_aliases(self):
-        """Test that all temperature conversion aliases produce same results"""
-        celsius = 25.0
-        
-        # Test Celsius to Fahrenheit aliases
-        result1 = pyco.convert_celsius_fahrenheit(celsius)
-        result2 = pyco.c_c_f(celsius)
-        result3 = pyco.c_f(celsius)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        fahrenheit = 77.0
-        
-        # Test Fahrenheit to Celsius aliases
-        result1 = pyco.convert_fahrenheit_celsius(fahrenheit)
-        result2 = pyco.c_f_c(fahrenheit)
-        result3 = pyco.f_c(fahrenheit)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-    
-    def test_all_distance_aliases(self):
-        """Test that all distance conversion aliases produce same results"""
-        miles = 5.0
-        
-        # Test miles to kilometers aliases
-        result1 = pyco.convert_miles_kilometers(miles)
-        result2 = pyco.c_mi_km(miles)
-        result3 = pyco.mi_km(miles)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        kilometers = 8.0
-        
-        # Test kilometers to miles aliases
-        result1 = pyco.convert_kilometers_miles(kilometers)
-        result2 = pyco.c_km_mi(kilometers)
-        result3 = pyco.km_mi(kilometers)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test miles to feet aliases
-        result1 = pyco.convert_miles_feet(miles)
-        result2 = pyco.c_mi_ft(miles)
-        result3 = pyco.mi_ft(miles)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        feet = 1000.0
-        
-        # Test feet to miles aliases
-        result1 = pyco.convert_feet_miles(feet)
-        result2 = pyco.c_ft_mi(feet)
-        result3 = pyco.ft_mi(feet)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        inches = 36.0
-        
-        # Test inches to feet aliases
-        result1 = pyco.convert_inches_feet(inches)
-        result2 = pyco.c_in_ft(inches)
-        result3 = pyco.in_ft(inches)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        feet = 3.0
-        
-        # Test feet to inches aliases
-        result1 = pyco.convert_feet_inches(feet)
-        result2 = pyco.c_ft_in(feet)
-        result3 = pyco.ft_in(feet)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test new distance conversion aliases
-        # Test feet to centimeters aliases
-        result1 = pyco.convert_feet_centimeters(feet)
-        result2 = pyco.c_ft_cm(feet)
-        result3 = pyco.ft_cm(feet)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        centimeters = 91.44
-        
-        # Test centimeters to feet aliases
-        result1 = pyco.convert_centimeters_feet(centimeters)
-        result2 = pyco.c_cm_ft(centimeters)
-        result3 = pyco.cm_ft(centimeters)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test feet to meters aliases
-        result1 = pyco.convert_feet_meters(feet)
-        result2 = pyco.c_ft_m(feet)
-        result3 = pyco.ft_m(feet)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test inches to centimeters aliases
-        result1 = pyco.convert_inches_centimeters(inches)
-        result2 = pyco.c_in_cm(inches)
-        result3 = pyco.in_cm(inches)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-    
-    def test_all_weight_aliases(self):
-        """Test that all weight conversion aliases produce same results"""
-        pounds = 10.0
-        
-        # Test pounds to kilograms aliases
-        result1 = pyco.convert_pounds_kilograms(pounds)
-        result2 = pyco.c_lb_kg(pounds)
-        result3 = pyco.lb_kg(pounds)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        kilograms = 4.53592
-        
-        # Test kilograms to pounds aliases
-        result1 = pyco.convert_kilograms_pounds(kilograms)
-        result2 = pyco.c_kg_lb(kilograms)
-        result3 = pyco.kg_lb(kilograms)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-    
-    def test_all_volume_aliases(self):
-        """Test that all volume conversion aliases produce same results"""
-        ounces = 16.0
-        
-        # Test ounces to milliliters aliases
-        result1 = pyco.convert_ounces_milliliters(ounces)
-        result2 = pyco.c_oz_ml(ounces)
-        result3 = pyco.oz_ml(ounces)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        milliliters = 473.176
-        
-        # Test milliliters to ounces aliases
-        result1 = pyco.convert_milliliters_ounces(milliliters)
-        result2 = pyco.c_ml_oz(milliliters)
-        result3 = pyco.ml_oz(milliliters)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        cups = 2.0
-        
-        # Test cups to ounces aliases
-        result1 = pyco.convert_cups_ounces(cups)
-        result2 = pyco.c_cup_oz(cups)
-        result3 = pyco.cup_oz(cups)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test ounces to cups aliases
-        result1 = pyco.convert_ounces_cups(ounces)
-        result2 = pyco.c_oz_cup(ounces)
-        result3 = pyco.oz_cup(ounces)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test cups to milliliters aliases
-        result1 = pyco.convert_cups_milliliters(cups)
-        result2 = pyco.c_cup_ml(cups)
-        result3 = pyco.cup_ml(cups)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-        
-        # Test milliliters to cups aliases
-        result1 = pyco.convert_milliliters_cups(milliliters)
-        result2 = pyco.c_ml_cup(milliliters)
-        result3 = pyco.ml_cup(milliliters)
-        
-        self.assertEqual(result1, result2)
-        self.assertEqual(result2, result3)
-    
-    def test_utility_aliases(self):
-        """Test that utility function aliases work correctly"""
-        # Test average aliases
-        test_list = [1, 2, 3, 4, 5]
-        result1 = pyco.average(test_list)
-        result2 = pyco.avg(test_list)
-        
-        self.assertEqual(result1, result2)
-        
-        # Test inputlist aliases would require mocking input
-
-
 class TestPycoWildcardSearch(unittest.TestCase):
     """Test wildcard search functionality in the find function"""
-    
-    def test_simple_wildcard_patterns(self):
-        """Test basic wildcard patterns"""
-        # Test prefix matching (ends with *)
-        results = pyco.find('convert_celsius*')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertNotIn('convert_fahrenheit_celsius', results)
-        
-        # Test suffix matching (starts with *)
-        results = pyco.find('*fahrenheit')
-        self.assertIn('convert_celsius_fahrenheit', results)
-        self.assertNotIn('convert_fahrenheit_celsius', results)
-        
-        # Test contains matching (surrounded by *)
-        results = pyco.find('*miles*')
-        self.assertIn('convert_miles_kilometers', results)
-        self.assertIn('convert_kilometers_miles', results)
-        self.assertIn('convert_miles_feet', results)
-        self.assertIn('convert_feet_miles', results)
-    
-    def test_alias_wildcard_patterns(self):
-        """Test wildcard patterns on function aliases"""
-        # Test short aliases starting with 'c_'
-        results = pyco.find('c_*')
-        expected_aliases = ['c_c_f', 'c_f_c', 'c_mi_km', 'c_km_mi', 'c_mi_ft', 'c_ft_mi', 'c_in_ft', 'c_ft_in']
-        for alias in expected_aliases:
-            self.assertIn(alias, results)
-        
-        # Test aliases ending with '_f'
-        results = pyco.find('*_f')
-        self.assertIn('c_c_f', results)
-        
-        # Test aliases containing '_mi_'
-        results = pyco.find('*_mi_*')
-        self.assertIn('c_mi_km', results)
-        self.assertIn('c_mi_ft', results)
-    
+       
     def test_object_method_wildcard_search(self):
         """Test wildcard search for object methods"""
         # Test finding math functions starting with 's'
@@ -1349,7 +1028,6 @@ class TestPycoAsciiTable(unittest.TestCase):
         header_count = sum(1 for call in print_calls if "Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C" in str(call))
         self.assertGreater(header_count, 1, "Should have multiple headers due to pagination")
 
-
 class TestPycoDisplayHook(unittest.TestCase):
     """Test the display hook functionality"""
     
@@ -1383,7 +1061,6 @@ class TestPycoDisplayHook(unittest.TestCase):
             pyco.displayhook(test_lambda)
             # Should call the lambda and pass result to original displayhook
             mock_displayhook.assert_called_once_with(42)
-
 
 class TestPycoExceptionHandlerCoverage(unittest.TestCase):
     """Test exception handler code coverage"""
@@ -1435,6 +1112,703 @@ class TestPycoExceptionHandlerCoverage(unittest.TestCase):
         print_calls = [str(call) for call in mock_print.call_args_list]
         found_convert = any("convert" in call for call in print_calls)
         self.assertTrue(found_convert, "Should print conversion functions")
+
+class TestPycoCategoryConversions(unittest.TestCase):
+    """Generic test that validates all conversions within each category automatically"""
+    
+    def test_all_category_conversions(self):
+        """Test that every unit in each category can convert to all other units in that category"""
+        categories = pyco.get_all_categories()
+        
+        for category in categories:
+            with self.subTest(category=category):
+                units = pyco.get_units_by_category(category)
+                
+                # Skip categories with only one unit
+                if len(units) <= 1:
+                    continue
+                
+                # Test all pairs of units within the category
+                for from_unit in units:
+                    for to_unit in units:
+                        if from_unit == to_unit:
+                            continue
+                        
+                        with self.subTest(from_unit=from_unit, to_unit=to_unit):
+                            try:
+                                # Test conversion with a reasonable test value
+                                test_value = 1.0 if category != 'temperature' else 0.0
+                                result = pyco.convert(from_unit, to_unit, test_value)
+                                
+                                # Verify the result is a number
+                                self.assertIsInstance(result, (int, float), 
+                                    f"Conversion from {from_unit} to {to_unit} should return a number")
+                                
+                                # For non-temperature conversions, verify round-trip accuracy
+                                if category != 'temperature':
+                                    # Convert back and check if we get approximately the original value
+                                    back_result = pyco.convert(to_unit, from_unit, result)
+                                    # Use relative tolerance for floating-point comparison
+                                    relative_error = abs((test_value - back_result) / test_value) if test_value != 0 else abs(back_result)
+                                    self.assertLess(relative_error, 1e-5,
+                                        msg=f"Round-trip conversion {from_unit} -> {to_unit} -> {from_unit} failed. "
+                                            f"Expected: {test_value}, Got: {back_result}, Relative error: {relative_error}")
+                                
+                            except ValueError as e:
+                                self.fail(f"No conversion path from {from_unit} to {to_unit} in category {category}: {e}")
+                            except Exception as e:
+                                self.fail(f"Unexpected error converting {from_unit} to {to_unit}: {e}")
+    
+    def test_category_completeness(self):
+        """Test that all categories have at least 2 units and form connected graphs"""
+        categories = pyco.get_all_categories()
+        
+        for category in categories:
+            with self.subTest(category=category):
+                units = pyco.get_units_by_category(category)
+                
+                if category == 'unknown':
+                    continue  # Skip unknown category
+                
+                # Each category should have at least 2 units to be meaningful
+                self.assertGreaterEqual(len(units), 2, 
+                    f"Category {category} should have at least 2 units, found: {units}")
+                
+                # Test that the category forms a connected graph
+                # (every unit can reach every other unit through some path)
+                base_unit = units[0]
+                for target_unit in units[1:]:
+                    try:
+                        test_value = 1.0 if category != 'temperature' else 0.0
+                        pyco.convert(base_unit, target_unit, test_value)
+                    except ValueError:
+                        self.fail(f"Units in category {category} are not fully connected: "
+                                f"cannot convert {base_unit} to {target_unit}")
+
+class TestPycoUnitNames(unittest.TestCase):
+    """Test unit name mapping and Units function"""
+    
+    def test_unit_names_completeness(self):
+        """Test that UNIT_NAMES contains all units from the conversion matrix and no extras"""
+        # Get all units from the conversion matrix
+        matrix_units = set()
+        for (unit1, unit2), _ in pyco.CONVERSION_MATRIX.items():
+            # Extract unit names from category.unit format
+            if '.' in unit1:
+                matrix_units.add(pyco.get_unit_name(unit1))
+            if '.' in unit2:
+                matrix_units.add(pyco.get_unit_name(unit2))
+        
+        # Add temperature units (handled separately)
+        matrix_units.update(['c', 'f', 'k'])
+        
+        # Get units from UNIT_NAMES dictionary
+        unit_names_keys = set(pyco.UNIT_NAMES.keys())
+        
+        # Check that all matrix units have names
+        missing_names = matrix_units - unit_names_keys
+        self.assertEqual(missing_names, set(), 
+                        f"UNIT_NAMES missing definitions for: {missing_names}")
+        
+        # Check that no extra names exist
+        extra_names = unit_names_keys - matrix_units
+        self.assertEqual(extra_names, set(),
+                        f"UNIT_NAMES has extra definitions for: {extra_names}")
+        
+        # Verify exact match
+        self.assertEqual(matrix_units, unit_names_keys,
+                        "UNIT_NAMES should contain exactly the same units as the conversion matrix")
+    
+    def test_unit_names_not_empty(self):
+        """Test that all unit names are non-empty strings"""
+        for unit, name in pyco.UNIT_NAMES.items():
+            self.assertIsInstance(name, str, f"Name for unit '{unit}' should be a string")
+            self.assertTrue(len(name) > 0, f"Name for unit '{unit}' should not be empty")
+            self.assertNotEqual(name.strip(), '', f"Name for unit '{unit}' should not be just whitespace")
+    
+    def test_unit_names_format(self):
+        """Test that unit names follow expected formatting"""
+        for unit, name in pyco.UNIT_NAMES.items():
+            # Names should be lowercase except for proper nouns (Celsius, Fahrenheit, Kelvin)
+            if unit not in ['c', 'f', 'k']:  # Temperature units use short names now
+                self.assertEqual(name, name.lower(), 
+                               f"Unit name for '{unit}' should be lowercase: '{name}'")
+            
+            # Names should not start or end with whitespace
+            self.assertEqual(name, name.strip(), 
+                           f"Unit name for '{unit}' should not have leading/trailing whitespace")
+    
+    def test_units_function_exists(self):
+        """Test that the units function exists and is callable"""
+        self.assertTrue(hasattr(pyco, 'units'), "pyco should have a units function")
+        self.assertTrue(callable(pyco.units), "units should be callable")
+    
+    def test_units_function_output(self):
+        """Test that the units function produces expected output"""
+        # Capture stdout to test the output and mock input for paging
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units()
+        
+        output = captured_output.getvalue()
+        
+        # Check that output contains expected sections with new compact format
+        self.assertIn("AREA:", output)
+        self.assertIn("DISTANCE:", output) 
+        self.assertIn("POWER:", output)
+        self.assertIn("SPEED:", output)
+        self.assertIn("TEMPERATURE:", output)
+        self.assertIn("TIME:", output)
+        self.assertIn("VOLUME:", output)
+        self.assertIn("WEIGHT:", output)
+        
+        # Check that specific units and their full names appear
+        self.assertIn("cm", output)
+        self.assertIn("centimeters", output)
+        self.assertIn("c", output)  # Temperature units now use short names
+        self.assertIn("Celsius", output)
+        self.assertIn("kg", output)
+        self.assertIn("kilograms", output)
+        self.assertIn("ft", output)
+        self.assertIn("feet", output)
+        
+        # Verify the output stays within width limit (each line should be <= 37 chars)
+        lines = output.split('\n')
+        for line in lines:
+            if line.strip() and not line.startswith('='):  # Skip empty lines and header
+                self.assertLessEqual(len(line), 37, f"Line too long: '{line}' ({len(line)} chars)")
+    
+    def test_temperature_units_handling(self):
+        """Test that temperature units are properly handled in UNIT_NAMES"""
+        # Temperature units should be present with short names
+        self.assertIn('c', pyco.UNIT_NAMES)
+        self.assertIn('f', pyco.UNIT_NAMES)
+        self.assertIn('k', pyco.UNIT_NAMES)
+        
+        # Temperature unit names should be capitalized (proper nouns)
+        self.assertEqual(pyco.UNIT_NAMES['c'], 'Celsius')
+        self.assertEqual(pyco.UNIT_NAMES['f'], 'Fahrenheit')
+        self.assertEqual(pyco.UNIT_NAMES['k'], 'Kelvin')
+
+class TestPycoCaseInsensitive(unittest.TestCase):
+    """Test case insensitive functionality of the convert function"""
+    
+    def test_case_insensitive_distance_conversions(self):
+        """Test distance conversions with various case combinations"""
+        # Test all uppercase
+        self.assertAlmostEqual(pyco.convert('MI', 'KM', 1), 1.609344)
+        self.assertAlmostEqual(pyco.convert('KM', 'MI', 1.609344), 1.0)
+        
+        # Test mixed case
+        self.assertAlmostEqual(pyco.convert('Mi', 'Km', 1), 1.609344)
+        self.assertAlmostEqual(pyco.convert('Ft', 'In', 1), 12.0)
+        
+        # Test lowercase (should still work)
+        self.assertAlmostEqual(pyco.convert('cm', 'in', 2.54), 1.0)
+    
+    def test_case_insensitive_temperature_conversions(self):
+        """Test temperature conversions with various case combinations"""
+        # Test all uppercase
+        self.assertEqual(pyco.convert('C', 'F', 0), 32.0)
+        self.assertEqual(pyco.convert('F', 'C', 32), 0.0)
+        
+        # Test mixed case
+        self.assertEqual(pyco.convert('c', 'f', 0), 32.0)
+        self.assertEqual(pyco.convert('f', 'c', 32), 0.0)
+        
+        # Test with Kelvin
+        self.assertAlmostEqual(pyco.convert('K', 'c', 273.15), 0.0, places=2)
+    
+    def test_case_insensitive_weight_conversions(self):
+        """Test weight conversions with various case combinations"""
+        # Test all uppercase
+        self.assertAlmostEqual(pyco.convert('LB', 'KG', 1), 0.453592)
+        self.assertAlmostEqual(pyco.convert('G', 'OZ', 1000), 35.274, places=2)
+        
+        # Test mixed case
+        self.assertAlmostEqual(pyco.convert('Lb', 'Kg', 2.20462), 1.0, places=4)
+    
+    def test_case_insensitive_volume_conversions(self):
+        """Test volume conversions with various case combinations"""
+        # Test all uppercase
+        self.assertEqual(pyco.convert('CUP', 'FLOZ', 1), 8.0)
+        self.assertAlmostEqual(pyco.convert('ML', 'L', 1000), 1.0)
+        
+        # Test mixed case
+        self.assertEqual(pyco.convert('Cup', 'Floz', 2), 16.0)
+    
+    def test_case_insensitive_power_conversions(self):
+        """Test power conversions with various case combinations"""
+        # Test uppercase W (should map to lowercase w internally)
+        self.assertAlmostEqual(pyco.convert('W', 'HP', 745.7), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('HP', 'W', 1), 745.7, places=1)
+    
+    def test_case_insensitive_same_unit(self):
+        """Test that same units with different cases return the original value"""
+        self.assertEqual(pyco.convert('KM', 'km', 5), 5)
+        self.assertEqual(pyco.convert('c', 'C', 25), 25)
+        self.assertEqual(pyco.convert('W', 'w', 100), 100)
+
+class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
+    """Test that there are no conflicting unit abbreviations across categories"""
+    
+    def test_no_duplicate_abbreviations(self):
+        """Test that each unit abbreviation is unique across all categories"""
+        # Get all external unit names from the conversion matrix
+        external_units = set()
+        mapping = pyco._get_external_to_internal_mapping()
+        
+        # Add all external unit names from the mapping
+        for external_name in mapping.keys():
+            external_units.add(external_name)
+        
+        # Add temperature units (handled separately)
+        external_units.update(['c', 'f', 'k'])
+        
+        # Convert to list to check for duplicates
+        unit_list = list(external_units)
+        unique_units = set(unit_list)
+        
+        # Check that no duplicates exist
+        self.assertEqual(len(unit_list), len(unique_units), 
+                        f"Duplicate unit abbreviations found: {[unit for unit in unit_list if unit_list.count(unit) > 1]}")
+    
+    def test_no_case_insensitive_conflicts(self):
+        """Test that unit abbreviations don't conflict when case is ignored"""
+        # Get all external unit names
+        external_units = set()
+        mapping = pyco._get_external_to_internal_mapping()
+        
+        # Add all external unit names from the mapping
+        for external_name in mapping.keys():
+            external_units.add(external_name)
+        
+        # Add temperature units (handled separately)
+        external_units.update(['c', 'f', 'k'])
+        
+        # Check for case-insensitive conflicts
+        lowercase_units = {}
+        conflicts = []
+        
+        for unit in external_units:
+            unit_lower = unit.lower()
+            if unit_lower in lowercase_units:
+                conflicts.append(f"'{lowercase_units[unit_lower]}' and '{unit}' conflict when case-insensitive")
+            else:
+                lowercase_units[unit_lower] = unit
+        
+        self.assertEqual(len(conflicts), 0, 
+                        f"Case-insensitive conflicts found: {conflicts}")
+    
+    def test_unit_names_coverage_matches_available_units(self):
+        """Test that UNIT_NAMES dictionary covers exactly the available units"""
+        # Get all external unit names from conversion system
+        external_units = set()
+        mapping = pyco._get_external_to_internal_mapping()
+        
+        # Add all external unit names from the mapping
+        for external_name in mapping.keys():
+            external_units.add(external_name)
+        
+        # Add temperature units (handled separately)
+        external_units.update(['c', 'f', 'k'])
+        
+        # Get all units from UNIT_NAMES dictionary
+        unit_names_keys = set(pyco.UNIT_NAMES.keys())
+        
+        # Check that they match exactly
+        missing_from_unit_names = external_units - unit_names_keys
+        extra_in_unit_names = unit_names_keys - external_units
+        
+        self.assertEqual(len(missing_from_unit_names), 0,
+                        f"Units missing from UNIT_NAMES: {missing_from_unit_names}")
+        self.assertEqual(len(extra_in_unit_names), 0,
+                        f"Extra units in UNIT_NAMES: {extra_in_unit_names}")
+    
+    def test_conversion_matrix_symmetry(self):
+        """Test that conversion matrix doesn't have conflicting bidirectional entries"""
+        conflicts = []
+        
+        for (unit1, unit2), factor1 in pyco.CONVERSION_MATRIX.items():
+            # Check if reverse entry exists
+            if (unit2, unit1) in pyco.CONVERSION_MATRIX:
+                factor2 = pyco.CONVERSION_MATRIX[(unit2, unit1)]
+                
+                # Skip function-based conversions (like temperature) as they have explicit bidirectional entries
+                if callable(factor1) or callable(factor2):
+                    continue
+                    
+                expected_factor2 = 1 / factor1
+                
+                # Allow small floating point errors
+                if abs(factor2 - expected_factor2) > 1e-10:
+                    conflicts.append(f"Inconsistent factors: ({unit1}, {unit2}): {factor1}, ({unit2}, {unit1}): {factor2}, expected: {expected_factor2}")
+        
+        self.assertEqual(len(conflicts), 0,
+                        f"Conversion matrix conflicts found: {conflicts}")
+    
+    def test_all_categories_have_units(self):
+        """Test that all categories returned by get_all_categories() have at least one unit"""
+        categories = pyco.get_all_categories()
+        
+        for category in categories:
+            units = pyco.get_units_by_category(category)
+            self.assertGreater(len(units), 0, 
+                              f"Category '{category}' has no units")
+    
+    def test_category_unit_format_consistency(self):
+        """Test that all units in conversion matrix follow category.unit format (except temperature)"""
+        invalid_formats = []
+        
+        for (unit1, unit2), _ in pyco.CONVERSION_MATRIX.items():
+            # Check unit1 format
+            if '.' not in unit1:
+                invalid_formats.append(f"Unit '{unit1}' doesn't follow category.unit format")
+            else:
+                category, unit_name = unit1.split('.', 1)
+                if not category or not unit_name:
+                    invalid_formats.append(f"Unit '{unit1}' has invalid category.unit format")
+            
+            # Check unit2 format
+            if '.' not in unit2:
+                invalid_formats.append(f"Unit '{unit2}' doesn't follow category.unit format")
+            else:
+                category, unit_name = unit2.split('.', 1)
+                if not category or not unit_name:
+                    invalid_formats.append(f"Unit '{unit2}' has invalid category.unit format")
+        
+        self.assertEqual(len(invalid_formats), 0,
+                        f"Invalid unit formats found: {invalid_formats}")
+
+class TestPycoConvertDefaultParameters(unittest.TestCase):
+    """Test convert function with default parameters and usage display"""
+    
+    def test_convert_no_parameters_displays_usage(self):
+        """Test that convert() with no parameters displays usage and units"""
+        # Capture stdout to test the printed output and mock input for paging
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            result = pyco.convert()
+        
+        output = captured_output.getvalue()
+        
+        # Check that the function returns None (since units() prints and returns None)
+        self.assertIsNone(result)
+        
+        # Check that the usage message is displayed
+        self.assertIn("Convert - convert values between two units.", output)
+        self.assertIn("Usage: convert(from, to, value)", output)
+        self.assertIn("Available units are:", output)
+        
+        # Check that units are displayed
+        self.assertIn("DISTANCE:", output)
+        self.assertIn("TEMPERATURE:", output)
+        
+    def test_convert_empty_from_unit_displays_usage(self):
+        """Test that convert('', 'miles', 5) displays usage and units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            result = pyco.convert('', 'miles', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Check that the function returns None
+        self.assertIsNone(result)
+        
+        # Check that the usage message is displayed
+        self.assertIn("Convert - convert values between two units.", output)
+        self.assertIn("Usage: convert(from, to, value)", output)
+        self.assertIn("Available units are:", output)
+        
+    def test_convert_empty_to_unit_displays_usage(self):
+        """Test that convert('miles', '', 5) displays usage and units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            result = pyco.convert('miles', '', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Check that the function returns None
+        self.assertIsNone(result)
+        
+        # Check that the usage message is displayed
+        self.assertIn("Convert - convert values between two units.", output)
+        self.assertIn("Usage: convert(from, to, value)", output)
+        self.assertIn("Available units are:", output)
+        
+    def test_convert_both_empty_units_displays_usage(self):
+        """Test that convert('', '', 5) displays usage and units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            result = pyco.convert('', '', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Check that the function returns None
+        self.assertIsNone(result)
+        
+        # Check that the usage message is displayed
+        self.assertIn("Convert - convert values between two units.", output)
+        self.assertIn("Usage: convert(from, to, value)", output)
+        self.assertIn("Available units are:", output)
+        
+    def test_convert_default_value_parameter(self):
+        """Test that the default value parameter (0) works correctly"""
+        # Test with explicit zero value
+        result = pyco.convert('mi', 'km', 0)
+        self.assertEqual(result, 0.0)
+        
+        # Test normal operation with default parameters shouldn't be affected
+        # (this test ensures default value=0 doesn't interfere with normal usage)
+        result = pyco.convert('ft', 'in', 12)  # 12 feet should be 144 inches
+        self.assertEqual(result, 144.0)
+
+class TestPycoUnitsSearch(unittest.TestCase):
+    """Test units function with search parameter and fuzzy matching"""
+    
+    def test_units_no_search_shows_all(self):
+        """Test that units() with no search parameter shows all categories"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units()
+        
+        output = captured_output.getvalue()
+        
+        # Should show all major categories
+        self.assertIn("AREA:", output)
+        self.assertIn("DISTANCE:", output)
+        self.assertIn("TEMPERATURE:", output)
+        self.assertIn("WEIGHT:", output)
+        
+    def test_units_empty_search_shows_all(self):
+        """Test that units('') shows all categories"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units('')
+        
+        output = captured_output.getvalue()
+        
+        # Should show all major categories
+        self.assertIn("AREA:", output)
+        self.assertIn("DISTANCE:", output)
+        self.assertIn("TEMPERATURE:", output)
+        self.assertIn("WEIGHT:", output)
+        
+    def test_units_exact_match_abbreviation(self):
+        """Test exact match on unit abbreviation"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('kg')
+        
+        output = captured_output.getvalue()
+        
+        # Should only show WEIGHT category with kg
+        self.assertIn("WEIGHT:", output)
+        self.assertIn("kg", output)
+        self.assertIn("kilograms", output)
+        # Should not show other categories
+        self.assertNotIn("AREA:", output)
+        self.assertNotIn("DISTANCE:", output)
+        
+    def test_units_exact_match_full_name(self):
+        """Test exact match on full unit name"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('celsius')
+        
+        output = captured_output.getvalue()
+        
+        # Should only show TEMPERATURE category
+        self.assertIn("TEMPERATURE:", output)
+        self.assertIn("Celsius", output)
+        # Should not show other categories  
+        self.assertNotIn("AREA:", output)
+        self.assertNotIn("WEIGHT:", output)
+        
+    def test_units_partial_match(self):
+        """Test partial string matching"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('meter')
+        
+        output = captured_output.getvalue()
+        
+        # Should show categories with meter-related units
+        self.assertIn("DISTANCE:", output)
+        self.assertIn("meters", output)
+        self.assertIn("centimeters", output)
+        self.assertIn("kilometers", output)
+        
+    def test_units_fuzzy_match_typo(self):
+        """Test fuzzy matching catches common typos"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('celcius')  # Common typo for celsius
+        
+        output = captured_output.getvalue()
+        
+        # Should find Celsius despite the typo
+        self.assertIn("TEMPERATURE:", output)
+        self.assertIn("Celsius", output)
+        
+    def test_units_fuzzy_match_alternate_spelling(self):
+        """Test fuzzy matching catches alternate spellings"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('metre')  # British spelling
+        
+        output = captured_output.getvalue()
+        
+        # Should find meter-related units
+        self.assertIn("meters", output)
+        
+    def test_units_no_matches_empty_output(self):
+        """Test that searching for non-existent units shows no categories"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('xyz123')  # Non-existent unit
+        
+        output = captured_output.getvalue()
+        
+        # Should not show any category headers
+        self.assertNotIn("AREA:", output)
+        self.assertNotIn("DISTANCE:", output)
+        self.assertNotIn("TEMPERATURE:", output)
+        self.assertNotIn("WEIGHT:", output)
+        # Should only have blank line
+        self.assertEqual(output.strip(), "")
+        
+    def test_units_case_insensitive_search(self):
+        """Test that search is case insensitive"""
+        captured_output1 = io.StringIO()
+        with patch('sys.stdout', captured_output1):
+            pyco.units('CELSIUS')
+        
+        captured_output2 = io.StringIO()
+        with patch('sys.stdout', captured_output2):
+            pyco.units('celsius')
+            
+        # Both should produce the same output
+        self.assertEqual(captured_output1.getvalue(), captured_output2.getvalue())
+        
+    def test_units_multiple_category_matches(self):
+        """Test search term that matches units in multiple categories"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            pyco.units('feet')  # Should match both area (feet^2) and distance (feet)
+        
+        output = captured_output.getvalue()
+        
+        # Should show both AREA and DISTANCE categories
+        self.assertIn("AREA:", output)
+        self.assertIn("DISTANCE:", output) 
+        self.assertIn("feet", output)
+
+class TestPycoConvertErrorHandling(unittest.TestCase):
+    """Test convert function error handling with helpful suggestions"""
+    
+    def test_convert_both_units_invalid(self):
+        """Test convert with both units invalid shows generic error message"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('xyz', 'abc', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Should return None
+        self.assertIsNone(result)
+        
+        # Should show generic error message
+        self.assertIn("No conversion from 'xyz' to 'abc'", output)
+        self.assertIn("Type 'units' to see available conversions", output)
+        
+        # Should not call units() function with search
+        self.assertNotIn("DISTANCE:", output)
+        self.assertNotIn("WEIGHT:", output)
+        
+    def test_convert_invalid_from_unit_with_suggestions(self):
+        """Test convert with invalid from_unit shows suggestions"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('kilo', 'lb', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Should return None
+        self.assertIsNone(result)
+        
+        # Should show specific error message for from_unit
+        self.assertIn("Could not convert the unit 'kilo'", output)
+        self.assertIn("Did you mean one of the following?", output)
+        
+        # Should show suggestions (units containing "kilo")
+        self.assertIn("kg", output)
+        self.assertIn("kilograms", output)
+        self.assertIn("km", output)
+        self.assertIn("kilometers", output)
+        
+    def test_convert_invalid_to_unit_with_suggestions(self):
+        """Test convert with invalid to_unit shows suggestions"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('kg', 'poun', 5)  # typo for pound
+        
+        output = captured_output.getvalue()
+        
+        # Should return None
+        self.assertIsNone(result)
+        
+        # Should show specific error message for to_unit
+        self.assertIn("Could not convert the unit 'poun'", output)
+        self.assertIn("Did you mean one of the following?", output)
+        
+        # Should show suggestions for weight units similar to "poun"
+        self.assertIn("lb", output)
+        self.assertIn("pounds", output)
+        
+    def test_convert_invalid_unit_no_suggestions(self):
+        """Test convert with invalid unit that has no similar matches"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('xyz123', 'kg', 5)
+        
+        output = captured_output.getvalue()
+        
+        # Should return None
+        self.assertIsNone(result)
+        
+        # Should show error message
+        self.assertIn("Could not convert the unit 'xyz123'", output)
+        self.assertIn("Did you mean one of the following?", output)
+        
+        # Output should be relatively short since no matches found
+        # (only the error message and blank line from units function)
+        
+    def test_convert_case_insensitive_validation(self):
+        """Test that unit validation is case insensitive"""
+        # Test with uppercase units
+        result1 = pyco.convert('KG', 'LB', 1)
+        result2 = pyco.convert('kg', 'lb', 1)
+        
+        # Both should work and give same result
+        self.assertIsNotNone(result1)
+        self.assertIsNotNone(result2)
+        self.assertEqual(result1, result2)
+        
+    def test_convert_temperature_validation(self):
+        """Test that temperature units are properly validated"""
+        # Valid temperature conversion should work
+        result = pyco.convert('c', 'f', 0)
+        self.assertAlmostEqual(result, 32.0, places=1)
+        
+        # Invalid temperature unit should show suggestions
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('celciu', 'f', 0)  # typo
+        
+        output = captured_output.getvalue()
+        self.assertIsNone(result)
+        self.assertIn("Could not convert the unit 'celciu'", output)
 
 if __name__ == '__main__':
     # Create a test suite

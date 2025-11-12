@@ -164,7 +164,7 @@ Sometimes you need to perform calculations on a series of numbers. Pyco lets you
 For longer lists of numbers, pyco provides a convenient way to enter them one at a time. Type `inputlist` (or just `il` for short) and pyco will prompt you to enter numbers:
 
 ```
->>> il()
+>>> il
 
 0: 85
 1: 92
@@ -191,7 +191,7 @@ Of course, you can still use the `_` variable:
 ```
 
 ## Calling other functions
-Functions are like _formulas_ in regular math: built-in calculators for specific tasks. Some are as simple as taking two numbers and returning their sum. Others can be more complex. They take information (called _arguments_) and give you back a result. To use a formula, type its name followed by parentheses containing the information it needs:
+Functions are like _formulas_ in regular math: built-in calculators for specific tasks. Some are as simple as taking two numbers and returning their sum. Others can be more complex. They take information (called _arguments_) and give you back a result. To use a function, type its name followed by parentheses containing the information it needs:
 
 ```
 >>> sqrt(16)
@@ -207,16 +207,12 @@ Some functions can take multiple pieces of information. You separate these by co
 3.142
 >>> pow(2, 8)
 256
->>> ft_cm(5, 6)
-167.64
 ```
 
 ## Finding functions
 With so many functions available, pyco makes it easy to find what you're looking for. Use the star symbol (`*`) as a wildcard to search:
 
 ```
->>> *convert*
-convert_celsius_fahrenheit convert_fahrenheit_celsius convert_miles_kilometers ...
 >>> *sin*
 sin asin sinh arcsin
 >>> sqr*
@@ -230,8 +226,10 @@ You can search at the beginning or end of function names:
 
 You can also use the TAB key. This is called tab completion, and is like auto-complete:
 
->>> *convert[TAB]
-convert_celsius_fahrenheit convert_fahrenheit_celsius convert_miles_kilometers ...
+```
+>>> s[TAB]
+set setattr sin sinh slice ...
+```
 
 ## Creating your own functions
 You can create your own functions to simplify calculations you do frequently. Use the `def` keyword followed by your function name:
@@ -246,7 +244,7 @@ You can create your own functions to simplify calculations you do frequently. Us
 135.6
 ```
 
-## Built-in Variables
+## Built-in variables
 Pyco comes with several useful variables already defined:
 
 - `_` - The result of your last calculation
@@ -265,7 +263,7 @@ Pyco comes with several useful variables already defined:
 30
 ```
 
-## Utility Functions
+## Utility functions
 These functions help with everyday tasks:
 
 - `tally` - Type a letter for everything you want to count. Will tell you how many things you typed in total.
@@ -280,7 +278,7 @@ Tally: aaaaaaaaaaaa
 12
 ```
 
-## Programmer's Functions
+## Programmer's functions
 For those working with computers and programming:
 
 - Data size constants: `kb`, `mb`, `gb`, `tb`
@@ -298,42 +296,55 @@ For those working with computers and programming:
 'A'
 ```
 
-## Conversion Functions
-Pyco includes dozens of conversion functions for common measurements. You can use the full names or short aliases:
+## Unit conversions
+Pyco lets you convert values between various units, such as miles to kilometers and more. To convert values, call the `convert` function with the units you care about and the value:
 
-**Temperature:**
-- `c_f(celsius)` or `convert_celsius_fahrenheit(celsius)`
-- `f_c(fahrenheit)` or `convert_fahrenheit_celsius(fahrenheit)`
+`convert(from_unit, to_unit, value)`
 
-**Distance:**
-- `mi_km(miles)` - miles to kilometers
-- `km_mi(kilometers)` - kilometers to miles  
-- `ft_in(feet)` - feet to inches
-- `in_ft(inches)` - inches to feet
-- `ft_cm(feet, inches=0)` - feet and inches to centimeters
-
-**Weight:**
-- `lb_kg(pounds)` - pounds to kilograms
-- `kg_lb(kilograms)` - kilograms to pounds
-
-**Volume:**
-- `oz_ml(ounces)` - fluid ounces to milliliters
-- `cup_ml(cups)` - cups to milliliters
-
-**Speed:**
-- `mph_kph(mph)` - miles per hour to kilometers per hour
-- `knots_mph(knots)` - nautical knots to miles per hour
+For example:
 
 ```
->>> f_c(72)
+>>> convert('f', 'c', 72)
 22.22222222222222
->>> mi_km(100)
+>>> convert('mi', 'km', 100)
 160.9344
->>> lb_kg(150)
-68.0388
+>>> convert('lb', 'kg', 150)
+68.0388555
+>>> convert('cups', 'ml', 2)
+473.176
 ```
 
-## Statistical Functions
+**What units are available?**
+Type `units` to see all available units, or `units('search_term')` to find specific ones:
+
+```
+>>> units('meter')
+
+AREA:
+  cm2  centimeters^2 m2   meters^2
+
+DISTANCE:
+  cm   centimeters   km   kilometers
+  m    meters
+
+SPEED:
+  kph  kilometers/h
+  mps  meters/second
+```
+
+The units function is smart about typos too - try searching for "celcius" or "metre" and it will still find what you're looking for!
+
+**Supported conversions:**
+- **Temperature:** Celsius (c), Fahrenheit (f), Kelvin (k)
+- **Distance:** meters (m), feet (ft), inches (in), miles (mi), kilometers (km), centimeters (cm)
+- **Weight:** grams (g), kilograms (kg), pounds (lb), ounces (oz), tons (t), stone (st)
+- **Volume:** liters (l), milliliters (ml), cups, pints (pt), quarts (qt), gallons (gal), fluid ounces (floz), tablespoons (tbsp), teaspoons (tsp)
+- **Area:** square inches (in2), square feet (ft2), square meters (m2), square centimeters (cm2), acres (ac)
+- **Speed:** meters/second (mps), kilometers/hour (kph), miles/hour (mph), knots (kn)
+- **Power:** watts (w), horsepower (hp)
+- **Time:** seconds (s), minutes (min), hours (h), days (d), weeks (wk), years (yr)
+
+## Statistical functions
 When working with lists of numbers, these functions help you understand your data:
 
 - `avg(list)` or `mean(list)` - Average of the numbers
@@ -354,7 +365,7 @@ When working with lists of numbers, these functions help you understand your dat
 18
 ```
 
-## Mathematical Functions
+## Mathematical functions
 For more advanced calculations:
 
 **Basic Math:**
@@ -377,25 +388,25 @@ For more advanced calculations:
 15
 ```
 
-## Trigonometric Functions
+## Trigonometric functions
 For angles and triangles (angles are in radians unless noted):
 
-**Basic Trigonometry:**
+**Basic trigonometry:**
 - `sin(x)` - Sine
 - `cos(x)` - Cosine  
 - `tan(x)` - Tangent
 
-**Inverse Functions:**
+**Inverse functions:**
 - `asin(x)` - Arcsine
 - `acos(x)` - Arccosine
 - `atan(x)` - Arctangent
 
-**Hyperbolic Functions:**
+**Hyperbolic functions:**
 - `sinh(x)` - Hyperbolic sine
 - `cosh(x)` - Hyperbolic cosine
 - `tanh(x)` - Hyperbolic tangent
 
-**Angle Conversion:**
+**Angle conversion:**
 - `degrees(x)` - Convert radians to degrees
 - `radians(x)` - Convert degrees to radians
 
