@@ -316,8 +316,12 @@ class TestPycoDistanceConversions(unittest.TestCase):
         self.assertAlmostEqual(pyco.convert('ft', 'cm', 2), 60.96)
         self.assertAlmostEqual(pyco.convert('ft', 'cm', 0.5), 15.24)
 
-    
-
+    def test_convert_feet_millimeters(self):
+        """Test feet to millimeters conversion"""
+        self.assertAlmostEqual(pyco.convert('ft', 'mm', 1), 304.8)
+        self.assertAlmostEqual(pyco.convert('ft', 'mm', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ft', 'mm', 2), 609.6)
+        self.assertAlmostEqual(pyco.convert('ft', 'mm', 0.5), 152.4)  
     
     def test_convert_feet_meters(self):
         """Test feet to meters conversion"""
