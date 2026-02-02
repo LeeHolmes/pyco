@@ -199,7 +199,7 @@ def asciitable():
     lines = []
     
     for i in range(0, 255, 4):
-        if i % 72 == 0:
+        if i % 68 == 0:
             lines.append("Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C")
         lines.append("{:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {}".format(
             i, i, get_printable_char(i),
