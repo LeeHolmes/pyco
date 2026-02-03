@@ -3,19 +3,20 @@ import sys
 import math
 from math import *
 import difflib
+import builtins
 
 if sys.implementation.name == 'cpython':
     import statistics
     from statistics import *
 
-    def displayhook(value):
+    def _displayhook(value):
         if callable(value):
-            displayhook(value())
+            _displayhook(value())
         else:
             sys.__displayhook__(value)
-    sys.displayhook = displayhook
+    sys.displayhook = _displayhook
 
-    def my_except_hook(exctype, value, traceback):
+    def _my_except_hook(exctype, value, traceback):
         if exctype == SyntaxError:
             cleanvalue = value.text.strip()
             if(cleanvalue.endswith("*") or cleanvalue.startswith("*")):
@@ -29,16 +30,71 @@ if sys.implementation.name == 'cpython':
                 sys.__excepthook__(exctype, value, traceback)
         else:
             sys.__excepthook__(exctype, value, traceback)
-    sys.excepthook = my_except_hook
+    sys.excepthook = _my_except_hook
 
 elif sys.implementation.name == 'micropython':
     __original_repl_print__ = __repl_print__
-    def displayhook(value):
+    def _displayhook(value):
         if callable(value):
-            displayhook(value())
+            _displayhook(value())
         else:
             __original_repl_print__(value)
-    __repl_print__ = displayhook
+    __repl_print__ = _displayhook
+
+import types
+
+def _get_useful_builtins():
+    """Get builtins that are useful for a calculator, excluding exceptions, warnings, and modules."""
+    useful = []
+    for name in dir(builtins):
+        if name.startswith('_'):
+            continue
+        obj = getattr(builtins, name, None)
+        # Exclude exception and warning classes
+        if isinstance(obj, type) and issubclass(obj, BaseException):
+            continue
+        # Exclude modules
+        if isinstance(obj, types.ModuleType):
+            continue
+        useful.append(name)
+    return useful
+
+def _get_docstring_summary(obj):
+    """Get the first line of an object's docstring as a brief summary."""
+    try:
+        doc = getattr(obj, '__doc__', None)
+        if doc:
+            # Get first non-empty line
+            first_line = doc.strip().split('\n')[0].strip()
+            return first_line
+    except:
+        pass
+    return None
+
+def _format_with_docstring(name, obj):
+    """Format a name with its docstring summary or type info for variables."""
+    # For non-callable objects (variables/constants), show type info
+    if not callable(obj):
+        type_name = type(obj).__name__
+        return f"{name} - variable of type {type_name}"
+    
+    # For callable objects, show docstring summary
+    summary = _get_docstring_summary(obj)
+    if summary:
+        return f"{name} - {summary}"
+    return name
+
+def _matches_term(name, obj, term):
+    """Check if term matches the name or the docstring of an object."""
+    term_lower = term.lower()
+    # Match against name
+    if term_lower in name.lower():
+        return True
+    # Match against docstring
+    doc = _get_docstring_summary(obj)
+    if doc and term_lower in doc.lower():
+        return True
+    return False
 
 def find(term):
     """Find all global variables or functions that match the given term pattern.
@@ -53,10 +109,26 @@ def find(term):
     # Handle simple string search (no wildcards)
     if not "*" in term:
         found = []
+        # Search globals (excluding modules and exceptions)
         for current in globals():
-            if term in current and not current.startswith('_'):
-                found.append(current)
-        return found
+            if current.startswith('_'):
+                continue
+            obj = globals()[current]
+            if isinstance(obj, types.ModuleType):
+                continue
+            # Exclude exception classes
+            if isinstance(obj, type) and issubclass(obj, BaseException):
+                continue
+            if _matches_term(current, obj, term):
+                found.append(_format_with_docstring(current, obj))
+        # Search builtins (excluding exceptions)
+        for current in _get_useful_builtins():
+            if any(current == f.split(' - ')[0] for f in found):
+                continue
+            obj = getattr(builtins, current, None)
+            if _matches_term(current, obj, term):
+                found.append(_format_with_docstring(current, obj))
+        return sorted(found, key=lambda x: x.lower())
     
     # Handle wildcard patterns
     lastDot = term.rfind('.')
@@ -94,9 +166,10 @@ def find(term):
         else:
             method_filter = method_part
 
-        # Find matching objects
+        # Find matching objects (search both globals and builtins)
         matching_objects = []
-        for obj_name in globals().keys():
+        all_names = set(globals().keys()) | set(_get_useful_builtins())
+        for obj_name in all_names:
             if obj_name.startswith('_'):
                 continue
             obj_match = False
@@ -134,11 +207,11 @@ def find(term):
                         matching_methods.append(method_name)
                 
                 if matching_methods:
-                    found_results.append(f"{obj_name}: {' '.join(matching_methods)}")
+                    found_results.append(f"{obj_name}: {' '.join(sorted(matching_methods))}")
             except:
                 pass
         
-        return found_results
+        return sorted(found_results, key=lambda x: x.lower())
     else:
         # Determine wildcard pattern
         starts_with_star = term.startswith("*")
@@ -152,30 +225,49 @@ def find(term):
         else:  # ends_with_star
             filter = term[:-1]   # Remove trailing *
         
-        results = globals().keys()
+        # Search both globals and builtins (excluding exceptions)
+        results = set(globals().keys()) | set(_get_useful_builtins())
 
         # Handle simple wildcard patterns (no dot)
         found_results = []
         for current in results:
             if current.startswith('_'):
                 continue
+            
+            # Get the object first for docstring matching
+            if current in globals():
+                obj = globals()[current]
+            else:
+                obj = getattr(builtins, current, None)
+            
+            # Skip modules
+            if isinstance(obj, types.ModuleType):
+                continue
+            
+            # Skip exception classes
+            if isinstance(obj, type) and issubclass(obj, BaseException):
+                continue
+            
+            # Get docstring for matching
+            doc = _get_docstring_summary(obj) or ""
+            
             match = False
             if starts_with_star and ends_with_star:
-                # Contains match
-                match = filter.lower() in current.lower()
+                # Contains match - check both name and docstring
+                match = filter.lower() in current.lower() or filter.lower() in doc.lower()
             elif starts_with_star:
-                # Ends with match
+                # Ends with match - name only (docstring ending match doesn't make sense)
                 match = current.lower().endswith(filter.lower())
             else:  # ends_with_star
-                # Starts with match
+                # Starts with match - name only
                 match = current.lower().startswith(filter.lower())
             
             if match:
-                found_results.append(current)
+                found_results.append(_format_with_docstring(current, obj))
         
-        return found_results
+        return sorted(found_results, key=lambda x: x.lower())
 
-def print_buffered(lines):
+def _print_buffered(lines):
     """
     Print an array of lines with paging support.
     
@@ -202,15 +294,15 @@ def asciitable():
         if i % 68 == 0:
             lines.append("Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C")
         lines.append("{:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {}".format(
-            i, i, get_printable_char(i),
-            (i + 1), (i + 1), get_printable_char(i + 1),
-            (i + 2), (i + 2), get_printable_char(i + 2),
-            (i + 3), (i + 3), get_printable_char(i + 3)))
+            i, i, _get_printable_char(i),
+            (i + 1), (i + 1), _get_printable_char(i + 1),
+            (i + 2), (i + 2), _get_printable_char(i + 2),
+            (i + 3), (i + 3), _get_printable_char(i + 3)))
     
-    print_buffered(lines)
+    _print_buffered(lines)
     return
 
-def get_printable_char(char):
+def _get_printable_char(char):
     """Return a printable character representation for the given ASCII code."""
     if char < 32:
         return '.'
@@ -247,7 +339,7 @@ def average(list):
 # Category information is encoded in unit names using the format: category.unit
 # This eliminates the need for separate category metadata while maintaining type safety.
 
-def get_unit_category(unit):
+def _get_unit_category(unit):
     """Extract the category from a unit name (category.unit format)."""
     if '.' in unit:
         return unit.split('.', 1)[0]
@@ -256,7 +348,7 @@ def get_unit_category(unit):
         return 'temperature'
     return 'unknown'
 
-def get_unit_name(unit):
+def _get_unit_name(unit):
     """Extract the unit name from category.unit format."""
     if '.' in unit:
         return unit.split('.', 1)[1]
@@ -273,13 +365,13 @@ def _get_external_to_internal_mapping():
         mapping = {}
         
         # Extract all units from the conversion matrix
-        for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+        for (unit1, unit2), _ in _CONVERSION_MATRIX.items():
             # For each internal unit, map its external name to the internal format
             if '.' in unit1:  # category.unit format
-                external_name = get_unit_name(unit1)  # Extract unit part
+                external_name = _get_unit_name(unit1)  # Extract unit part
                 mapping[external_name] = unit1
             if '.' in unit2:  # category.unit format
-                external_name = get_unit_name(unit2)  # Extract unit part
+                external_name = _get_unit_name(unit2)  # Extract unit part
                 mapping[external_name] = unit2
         
         _external_to_internal_cache = mapping
@@ -291,7 +383,7 @@ def _is_valid_unit(unit):
     internal_unit = _to_internal_unit(unit)
     
     # Check if unit appears in conversion matrix
-    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+    for (unit1, unit2), _ in _CONVERSION_MATRIX.items():
         if internal_unit == unit1 or internal_unit == unit2:
             return True
     return False
@@ -324,27 +416,27 @@ def _to_internal_unit(unit):
     # If no match found, return original unit
     return unit
 
-def get_units_by_category(category):
+def _get_units_by_category(category):
     """Get all units belonging to a specific category."""
     all_units = set()
     # Get units from conversion matrix (temperature units are now included)
-    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+    for (unit1, unit2), _ in _CONVERSION_MATRIX.items():
         all_units.add(unit1)
         all_units.add(unit2)
     
     # Filter by category and return external unit names
-    category_units = [unit for unit in all_units if get_unit_category(unit) == category]
-    return [get_unit_name(unit) for unit in category_units]
+    category_units = [unit for unit in all_units if _get_unit_category(unit) == category]
+    return [_get_unit_name(unit) for unit in category_units]
 
-def get_all_categories():
+def _get_all_categories():
     """Get all available unit categories."""
     all_units = set()
     # Get units from conversion matrix (temperature units are now included)
-    for (unit1, unit2), _ in CONVERSION_MATRIX.items():
+    for (unit1, unit2), _ in _CONVERSION_MATRIX.items():
         all_units.add(unit1)
         all_units.add(unit2)
     
-    return list(set(get_unit_category(unit) for unit in all_units))
+    return list(set(_get_unit_category(unit) for unit in all_units))
 
 # Temperature conversion functions
 def _celsius_to_fahrenheit(value):
@@ -367,7 +459,7 @@ def _kelvin_to_celsius(value):
 # Format: (unit1, unit2): conversion_factor means unit1 * conversion_factor = unit2
 # For temperature conversions, functions are used instead of constants due to offsets
 # Units use category.name format to encode category information directly in the data
-CONVERSION_MATRIX = {
+_CONVERSION_MATRIX = {
     # Time conversions (smaller -> larger)
     ('time.s', 'time.min'): 1/60,
     ('time.min', 'time.h'): 1/60,
@@ -429,7 +521,7 @@ CONVERSION_MATRIX = {
 }
 
 # Unit abbreviation to full English name mapping
-UNIT_NAMES = {
+_UNIT_NAMES = {
     # Time units
     's': 'seconds',
     'min': 'minutes', 
@@ -531,18 +623,18 @@ def _generate_units_lines(search=""):
                 max_word_similarity >= similarity_threshold)
     
     # Get all categories
-    categories = get_all_categories()
+    categories = _get_all_categories()
     categories.sort()  # Sort alphabetically
     
     for category in categories:
         # Get units for this category
-        all_units = get_units_by_category(category)
+        all_units = _get_units_by_category(category)
         
         # Filter units based on search term
         if search:
             units = []
             for unit in all_units:
-                full_name = UNIT_NAMES.get(unit, unit)
+                full_name = _UNIT_NAMES.get(unit, unit)
                 if _matches_search(unit, full_name, search):
                     units.append(unit)
         else:
@@ -561,7 +653,7 @@ def _generate_units_lines(search=""):
         i = 0
         while i < len(units):
             unit1 = units[i]
-            full_name1 = UNIT_NAMES.get(unit1, unit1)
+            full_name1 = _UNIT_NAMES.get(unit1, unit1)
             
             # Format first column: "abbr full_name" (max 18 chars to fit in 37 total)
             col1 = f"{unit1:<4} {full_name1}"
@@ -574,7 +666,7 @@ def _generate_units_lines(search=""):
             elif i + 1 < len(units):
                 # Try to add second column
                 unit2 = units[i + 1]
-                full_name2 = UNIT_NAMES.get(unit2, unit2)
+                full_name2 = _UNIT_NAMES.get(unit2, unit2)
                 col2 = f"{unit2:<4} {full_name2}"
                 
                 if len(col2) > 18:
@@ -609,7 +701,7 @@ def units(search=""):
                      Matches against both unit abbreviations and full names (case-insensitive).
     """
     lines = _generate_units_lines(search)
-    print_buffered(lines)
+    _print_buffered(lines)
 
 def _get_conversion_factor(from_unit, to_unit):
     """
@@ -623,12 +715,12 @@ def _get_conversion_factor(from_unit, to_unit):
         float or function: Conversion factor or function, or None if no direct conversion exists
     """
     # Check forward direction
-    if (from_unit, to_unit) in CONVERSION_MATRIX:
-        return CONVERSION_MATRIX[(from_unit, to_unit)]
+    if (from_unit, to_unit) in _CONVERSION_MATRIX:
+        return _CONVERSION_MATRIX[(from_unit, to_unit)]
     
     # Check reverse direction (invert the factor or find reverse function)
-    if (to_unit, from_unit) in CONVERSION_MATRIX:
-        factor_or_func = CONVERSION_MATRIX[(to_unit, from_unit)]
+    if (to_unit, from_unit) in _CONVERSION_MATRIX:
+        factor_or_func = _CONVERSION_MATRIX[(to_unit, from_unit)]
         if callable(factor_or_func):
             # For functions, we need to look up the reverse function
             # This is handled in the conversion matrix with bidirectional entries
@@ -651,7 +743,7 @@ def _get_connected_units(unit):
     connections = []
     
     # Check all matrix entries for connections
-    for (unit1, unit2), factor_or_func in CONVERSION_MATRIX.items():
+    for (unit1, unit2), factor_or_func in _CONVERSION_MATRIX.items():
         if unit1 == unit:
             connections.append((unit2, factor_or_func))
         elif unit2 == unit:
@@ -709,7 +801,7 @@ def convert(from_unit="", to_unit="", value=0):
         ]
         units_lines = _generate_units_lines()
         all_lines = header_lines + units_lines
-        print_buffered(all_lines)
+        _print_buffered(all_lines)
         return None
     
     if from_unit.lower() == to_unit.lower():
@@ -722,19 +814,19 @@ def convert(from_unit="", to_unit="", value=0):
     # Handle invalid units with helpful error messages
     if not from_unit_valid and not to_unit_valid:
         error_lines = [f"No conversion from '{from_unit}' to '{to_unit}'. Type 'units' to see available conversions."]
-        print_buffered(error_lines)
+        _print_buffered(error_lines)
         return None
     elif not from_unit_valid:
         error_lines = [f"Could not convert the unit '{from_unit}'. Did you mean one of the following?"]
         units_lines = _generate_units_lines(from_unit)
         all_lines = error_lines + units_lines
-        print_buffered(all_lines)
+        _print_buffered(all_lines)
         return None
     elif not to_unit_valid:
         error_lines = [f"Could not convert the unit '{to_unit}'. Did you mean one of the following?"]
         units_lines = _generate_units_lines(to_unit)
         all_lines = error_lines + units_lines
-        print_buffered(all_lines)
+        _print_buffered(all_lines)
         return None
     
     # Convert to internal format

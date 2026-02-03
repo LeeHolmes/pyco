@@ -16,13 +16,17 @@ class TestPycoUtilityFunctions(unittest.TestCase):
     
     def test_find_comprehensive(self):
         """Comprehensive test of the find function with all patterns"""
+        # Helper to check if a name is in results (results now include docstrings)
+        def has_name(results, name):
+            return any(r.startswith(name + ' - ') or r == name for r in results)
+        
         # Test simple string search (original behavior)
         results = pyco.find('convert')
-        self.assertIn('convert', results)
+        self.assertTrue(has_name(results, 'convert'))
         
         # Test finding functions that contain 'avg'
         results = pyco.find('avg')
-        self.assertIn('avg', results)
+        self.assertTrue(has_name(results, 'avg'))
         
         # Test finding non-existent term
         results = pyco.find('nonexistent')
@@ -31,32 +35,152 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         # Test wildcard patterns
         # Prefix matching (starts with)
         results = pyco.find('f*')
-        self.assertIn('fabs', results)
-        self.assertIn('factorial', results)
+        self.assertTrue(has_name(results, 'fabs'))
+        self.assertTrue(has_name(results, 'factorial'))
         
         # Suffix matching (ends with)
         results = pyco.find('*an')
-        self.assertIn('atan', results)
-        self.assertIn('mean', results)
+        self.assertTrue(has_name(results, 'atan'))
+        self.assertTrue(has_name(results, 'mean'))
         
         # Contains matching (surrounded by *)
         results = pyco.find('*ex*')
-        self.assertIn('exp', results)
-        self.assertIn('frexp', results)
+        self.assertTrue(has_name(results, 'exp'))
+        self.assertTrue(has_name(results, 'frexp'))
         
         # Test pattern that should match nothing
         results = pyco.find('*xyz*')
         self.assertEqual(results, [])
         
-        # Test case insensitivity
+        # Test case insensitivity (extract just the names for comparison)
+        def get_names(results):
+            return set(r.split(' - ')[0] for r in results)
+        
         results_lower = pyco.find('*convert*')
         results_upper = pyco.find('*CONVERT*')
         results_mixed = pyco.find('*Convert*')
-        self.assertEqual(set(results_lower), set(results_upper))
-        self.assertEqual(set(results_lower), set(results_mixed))
+        self.assertEqual(get_names(results_lower), get_names(results_upper))
+        self.assertEqual(get_names(results_lower), get_names(results_mixed))
+    
+    def test_find_builtins(self):
+        """Test that find() can find Python builtins"""
+        # Helper to check if a name is in results (results now include docstrings)
+        def has_name(results, name):
+            return any(r.startswith(name + ' - ') or r == name for r in results)
+        
+        # Test finding builtins with simple search
+        results = pyco.find('print')
+        self.assertTrue(has_name(results, 'print'))
+        
+        results = pyco.find('len')
+        self.assertTrue(has_name(results, 'len'))
+        
+        # Test finding builtins with wildcard patterns
+        results = pyco.find('int*')
+        self.assertTrue(has_name(results, 'int'))
+        
+        results = pyco.find('str*')
+        self.assertTrue(has_name(results, 'str'))
+        
+        # Test finding builtins with suffix pattern
+        results = pyco.find('*put')
+        self.assertTrue(has_name(results, 'input'))
+        
+        # Test finding builtins with contains pattern
+        results = pyco.find('*rang*')
+        self.assertTrue(has_name(results, 'range'))
+    
+    def test_find_includes_docstrings(self):
+        """Test that find() includes docstring summaries in results"""
+        # Test a builtin with a known docstring
+        results = pyco.find('len')
+        # Should have at least one result with a docstring
+        has_docstring = any(' - ' in r for r in results)
+        self.assertTrue(has_docstring, "find() should include docstring summaries")
+        
+        # Test that the format is "name - docstring summary"
+        len_result = [r for r in results if r.startswith('len')][0]
+        self.assertIn(' - ', len_result)
+        
+        # Test with wildcard pattern
+        results = pyco.find('tan*')
+        tan_results = [r for r in results if r.startswith('tan')]
+        self.assertTrue(len(tan_results) > 0)
+        # tanh should have its docstring
+        tanh_result = [r for r in results if r.startswith('tanh')]
+        if tanh_result:
+            self.assertIn(' - ', tanh_result[0])
+    
+    def test_find_excludes_exceptions(self):
+        """Test that find() excludes Python exceptions and errors from results"""
+        # Test that common exceptions are not found
+        results = pyco.find('*Error*')
+        for result in results:
+            # None of the results should be exception class names
+            self.assertNotIn('ValueError', result)
+            self.assertNotIn('TypeError', result)
+            self.assertNotIn('KeyError', result)
+            self.assertNotIn('PythonFinalizationError', result)
+        
+        # Test that searching for "Error" doesn't return exception classes
+        results = pyco.find('Error')
+        exception_names = ['ValueError', 'TypeError', 'KeyError', 'IndexError', 
+                          'RuntimeError', 'AttributeError', 'NameError']
+        for exc_name in exception_names:
+            self.assertNotIn(exc_name, results, 
+                           f"Exception '{exc_name}' should not appear in find() results")
+        
+        # Test that warnings are also excluded
+        results = pyco.find('*Warning*')
+        warning_names = ['UserWarning', 'DeprecationWarning', 'RuntimeWarning']
+        for warn_name in warning_names:
+            self.assertNotIn(warn_name, results,
+                           f"Warning '{warn_name}' should not appear in find() results")
+        
+        # Test wildcard patterns also exclude exceptions
+        results = pyco.find('*Exception*')
+        self.assertNotIn('Exception', results)
+        self.assertNotIn('BaseException', results)
+    
+    def test_find_searches_docstrings(self):
+        """Test that find() searches within docstrings/definitions"""
+        # Helper to check if a name is in results
+        def has_name(results, name):
+            return any(r.startswith(name + ' - ') or r == name for r in results)
+        
+        # Test finding by docstring content - 'hyperbolic' should find tanh, sinh, cosh
+        results = pyco.find('hyperbolic')
+        self.assertTrue(has_name(results, 'tanh'), 
+                       "find('hyperbolic') should find tanh (docstring contains 'hyperbolic')")
+        self.assertTrue(has_name(results, 'sinh'),
+                       "find('hyperbolic') should find sinh (docstring contains 'hyperbolic')")
+        self.assertTrue(has_name(results, 'cosh'),
+                       "find('hyperbolic') should find cosh (docstring contains 'hyperbolic')")
+        
+        # Test finding by docstring with wildcard contains pattern
+        results = pyco.find('*tangent*')
+        # Should find atan, tanh etc because their docstrings contain 'tangent'
+        self.assertTrue(has_name(results, 'atan') or has_name(results, 'tanh'),
+                       "find('*tangent*') should find functions with 'tangent' in docstring")
+        
+        # Test that search term in docstring but not name still works
+        results = pyco.find('cosine')
+        self.assertTrue(has_name(results, 'acos') or has_name(results, 'cos'),
+                       "find('cosine') should find cos/acos (docstring contains 'cosine')")
+        
+        # Test that prefix/suffix wildcards only match names, not docstrings
+        results = pyco.find('hyper*')
+        # Should NOT find tanh just because docstring starts with something
+        # (prefix matching is name-only)
+        self.assertFalse(has_name(results, 'tanh'),
+                        "find('hyper*') should not match tanh (prefix is name-only)")
     
     def test_find_object_method_patterns(self):
         """Test the find function with object.method patterns"""
+        # Helper to check if a name is in results (results now include docstrings)
+        def has_name(results, name):
+            return any(r.startswith(name + ' - ') or r == name for r in results)
+        
         # Test math module methods starting with 's'
         results = pyco.find('math.s*')
         math_results = [r for r in results if r.startswith('math:')]
@@ -69,9 +193,15 @@ class TestPycoUtilityFunctions(unittest.TestCase):
             self.assertIn('sqrt', methods_str)
 
         # Test object matching with different patterns
-        # First, object patterns
+        # Note: simple 'math' search won't find 'math' module (modules are excluded)
+        # but it may find functions with 'math' in their docstrings
+        results = pyco.find('math')
+        # The math module itself is excluded, but we should get some results
+        # from functions that mention 'math' in their docstrings
+        self.assertIsInstance(results, list)
+        
+        # Object.method patterns (these don't include docstrings, just method lists)
         test_patterns = [
-            ['math', ['math']],  # exact match
             ['mat*.sin', ['math: sin']],   # starts with
             ['*ath.sin', ['math: sin']],   # ends with
             ['*math*.sin', ['math: sin']]  # contains
@@ -83,7 +213,6 @@ class TestPycoUtilityFunctions(unittest.TestCase):
 
         # Method patterns
         test_patterns = [
-            ['math', ['math']],  # exact match
             ['math.si*', ['math: sin sinh']],   # starts with
             ['math.*in', ['math: asin sin']],   # ends with
             ['math.*sin*', ['math: asin asinh isinf sin sinh']]  # contains
@@ -140,6 +269,10 @@ class TestPycoUtilityFunctions(unittest.TestCase):
     
     def test_find_excludes_underscore_prefix(self):
         """Test that find function excludes functions starting with underscore"""
+        # Helper to extract name from result (results now include docstrings)
+        def get_name(result):
+            return result.split(' - ')[0]
+        
         # Test direct search for underscore-prefixed functions should return empty
         underscore_results = pyco.find('_*')
         self.assertEqual(underscore_results, [], 
@@ -147,7 +280,7 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         
         # Test that functions containing but not starting with underscore are still found
         underscore_containing = pyco.find('*_*')
-        underscore_starting = [name for name in underscore_containing if name.startswith('_')]
+        underscore_starting = [get_name(r) for r in underscore_containing if get_name(r).startswith('_')]
         self.assertEqual(underscore_starting, [], 
                         "No functions starting with underscore should be in '*_*' search results")
         
@@ -157,24 +290,24 @@ class TestPycoUtilityFunctions(unittest.TestCase):
         
         # Test simple search for underscore should not return underscore-prefixed functions
         simple_underscore = pyco.find('_')
-        underscore_prefixed = [name for name in simple_underscore if name.startswith('_')]
+        underscore_prefixed = [get_name(r) for r in simple_underscore if get_name(r).startswith('_')]
         self.assertEqual(underscore_prefixed, [], 
                         "Simple underscore search should not return underscore-prefixed functions")
     
     def test_get_printable_char(self):
         """Test the get_printable_char function"""
         # Test printable ASCII characters
-        self.assertEqual(pyco.get_printable_char(65), 'A')
-        self.assertEqual(pyco.get_printable_char(97), 'a')
-        self.assertEqual(pyco.get_printable_char(48), '0')
-        self.assertEqual(pyco.get_printable_char(32), ' ')
-        self.assertEqual(pyco.get_printable_char(126), '~')
+        self.assertEqual(pyco._get_printable_char(65), 'A')
+        self.assertEqual(pyco._get_printable_char(97), 'a')
+        self.assertEqual(pyco._get_printable_char(48), '0')
+        self.assertEqual(pyco._get_printable_char(32), ' ')
+        self.assertEqual(pyco._get_printable_char(126), '~')
         
         # Test non-printable characters (should return '.')
-        self.assertEqual(pyco.get_printable_char(0), '.')
-        self.assertEqual(pyco.get_printable_char(31), '.')
-        self.assertEqual(pyco.get_printable_char(127), '.')
-        self.assertEqual(pyco.get_printable_char(159), '.')
+        self.assertEqual(pyco._get_printable_char(0), '.')
+        self.assertEqual(pyco._get_printable_char(31), '.')
+        self.assertEqual(pyco._get_printable_char(127), '.')
+        self.assertEqual(pyco._get_printable_char(159), '.')
     
     @patch('builtins.input', side_effect=['1','2', ''])
     def test_inputlist(self, mock_input):
@@ -705,7 +838,7 @@ class TestPycoMultiStepConversions(unittest.TestCase):
         # Verify that each unit pair appears at most once in the matrix
         # Exception: Temperature conversions use functions in both directions
         seen_pairs = set()
-        for (unit1, unit2), factor_or_func in pyco.CONVERSION_MATRIX.items():
+        for (unit1, unit2), factor_or_func in pyco._CONVERSION_MATRIX.items():
             # Skip function-based conversions (like temperature) which need bidirectional entries
             if callable(factor_or_func):
                 continue
@@ -969,12 +1102,16 @@ class TestPycoWildcardSearch(unittest.TestCase):
         results = pyco.find('*c*')
         self.assertGreater(len(results), 0)  # Should find many functions containing 'c'
         
+        # Helper to check if a name is in results (results now include docstrings)
+        def has_name(results, name):
+            return any(r.startswith(name + ' - ') or r == name for r in results)
+        
         # Test very specific patterns
         results = pyco.find('avg')
-        self.assertIn('avg', results)
+        self.assertTrue(has_name(results, 'avg'))
         
         results = pyco.find('*avg*')
-        self.assertIn('avg', results)
+        self.assertTrue(has_name(results, 'avg'))
     
     def test_no_match_patterns(self):
         """Test patterns that should return no matches"""
@@ -1043,7 +1180,7 @@ class TestPycoDisplayHook(unittest.TestCase):
         
         # Mock the original displayhook to capture calls
         with patch('sys.__displayhook__') as mock_displayhook:
-            pyco.displayhook(test_function)
+            pyco._displayhook(test_function)
             # Should call the function and pass result to original displayhook
             mock_displayhook.assert_called_once_with("test_result")
     
@@ -1053,7 +1190,7 @@ class TestPycoDisplayHook(unittest.TestCase):
         test_value = "not_callable"
         
         with patch('sys.__displayhook__') as mock_displayhook:
-            pyco.displayhook(test_value)
+            pyco._displayhook(test_value)
             # Should pass the value directly to original displayhook
             mock_displayhook.assert_called_once_with(test_value)
     
@@ -1062,7 +1199,7 @@ class TestPycoDisplayHook(unittest.TestCase):
         test_lambda = lambda: 42
         
         with patch('sys.__displayhook__') as mock_displayhook:
-            pyco.displayhook(test_lambda)
+            pyco._displayhook(test_lambda)
             # Should call the lambda and pass result to original displayhook
             mock_displayhook.assert_called_once_with(42)
 
@@ -1073,7 +1210,7 @@ class TestPycoExceptionHandlerCoverage(unittest.TestCase):
         """Test exception handler with non-SyntaxError exceptions"""
         # Test that non-SyntaxError exceptions are passed through
         with patch('sys.__excepthook__') as mock_excepthook:
-            pyco.my_except_hook(ValueError, ValueError("test"), None)
+            pyco._my_except_hook(ValueError, ValueError("test"), None)
             # Should pass through to original exception handler
             mock_excepthook.assert_called_once()
     
@@ -1085,7 +1222,7 @@ class TestPycoExceptionHandlerCoverage(unittest.TestCase):
         mock_error.strip.return_value = "normal_syntax_error"
         
         with patch('sys.__excepthook__') as mock_excepthook:
-            pyco.my_except_hook(SyntaxError, mock_error, None)
+            pyco._my_except_hook(SyntaxError, mock_error, None)
             # Should pass through to original exception handler
             mock_excepthook.assert_called_once_with(SyntaxError, mock_error, None)
     
@@ -1096,7 +1233,7 @@ class TestPycoExceptionHandlerCoverage(unittest.TestCase):
         mock_error = MagicMock()
         mock_error.text.strip.return_value = "nonexistent_xyz*"
         
-        pyco.my_except_hook(SyntaxError, mock_error, None)
+        pyco._my_except_hook(SyntaxError, mock_error, None)
         
         # Should print "No matches found."
         mock_print.assert_called_with("No matches found.")
@@ -1108,7 +1245,7 @@ class TestPycoExceptionHandlerCoverage(unittest.TestCase):
         mock_error = MagicMock()
         mock_error.text.strip.return_value = "convert*"
         
-        pyco.my_except_hook(SyntaxError, mock_error, None)
+        pyco._my_except_hook(SyntaxError, mock_error, None)
         
         # Should print each result
         self.assertTrue(mock_print.called)
@@ -1122,11 +1259,11 @@ class TestPycoCategoryConversions(unittest.TestCase):
     
     def test_all_category_conversions(self):
         """Test that every unit in each category can convert to all other units in that category"""
-        categories = pyco.get_all_categories()
+        categories = pyco._get_all_categories()
         
         for category in categories:
             with self.subTest(category=category):
-                units = pyco.get_units_by_category(category)
+                units = pyco._get_units_by_category(category)
                 
                 # Skip categories with only one unit
                 if len(units) <= 1:
@@ -1165,11 +1302,11 @@ class TestPycoCategoryConversions(unittest.TestCase):
     
     def test_category_completeness(self):
         """Test that all categories have at least 2 units and form connected graphs"""
-        categories = pyco.get_all_categories()
+        categories = pyco._get_all_categories()
         
         for category in categories:
             with self.subTest(category=category):
-                units = pyco.get_units_by_category(category)
+                units = pyco._get_units_by_category(category)
                 
                 if category == 'unknown':
                     continue  # Skip unknown category
@@ -1196,18 +1333,18 @@ class TestPycoUnitNames(unittest.TestCase):
         """Test that UNIT_NAMES contains all units from the conversion matrix and no extras"""
         # Get all units from the conversion matrix
         matrix_units = set()
-        for (unit1, unit2), _ in pyco.CONVERSION_MATRIX.items():
+        for (unit1, unit2), _ in pyco._CONVERSION_MATRIX.items():
             # Extract unit names from category.unit format
             if '.' in unit1:
-                matrix_units.add(pyco.get_unit_name(unit1))
+                matrix_units.add(pyco._get_unit_name(unit1))
             if '.' in unit2:
-                matrix_units.add(pyco.get_unit_name(unit2))
+                matrix_units.add(pyco._get_unit_name(unit2))
         
         # Add temperature units (handled separately)
         matrix_units.update(['c', 'f', 'k'])
         
         # Get units from UNIT_NAMES dictionary
-        unit_names_keys = set(pyco.UNIT_NAMES.keys())
+        unit_names_keys = set(pyco._UNIT_NAMES.keys())
         
         # Check that all matrix units have names
         missing_names = matrix_units - unit_names_keys
@@ -1225,14 +1362,14 @@ class TestPycoUnitNames(unittest.TestCase):
     
     def test_unit_names_not_empty(self):
         """Test that all unit names are non-empty strings"""
-        for unit, name in pyco.UNIT_NAMES.items():
+        for unit, name in pyco._UNIT_NAMES.items():
             self.assertIsInstance(name, str, f"Name for unit '{unit}' should be a string")
             self.assertTrue(len(name) > 0, f"Name for unit '{unit}' should not be empty")
             self.assertNotEqual(name.strip(), '', f"Name for unit '{unit}' should not be just whitespace")
     
     def test_unit_names_format(self):
         """Test that unit names follow expected formatting"""
-        for unit, name in pyco.UNIT_NAMES.items():
+        for unit, name in pyco._UNIT_NAMES.items():
             # Names should be lowercase except for proper nouns (Celsius, Fahrenheit, Kelvin)
             if unit not in ['c', 'f', 'k']:  # Temperature units use short names now
                 self.assertEqual(name, name.lower(), 
@@ -1285,14 +1422,14 @@ class TestPycoUnitNames(unittest.TestCase):
     def test_temperature_units_handling(self):
         """Test that temperature units are properly handled in UNIT_NAMES"""
         # Temperature units should be present with short names
-        self.assertIn('c', pyco.UNIT_NAMES)
-        self.assertIn('f', pyco.UNIT_NAMES)
-        self.assertIn('k', pyco.UNIT_NAMES)
+        self.assertIn('c', pyco._UNIT_NAMES)
+        self.assertIn('f', pyco._UNIT_NAMES)
+        self.assertIn('k', pyco._UNIT_NAMES)
         
         # Temperature unit names should be capitalized (proper nouns)
-        self.assertEqual(pyco.UNIT_NAMES['c'], 'Celsius')
-        self.assertEqual(pyco.UNIT_NAMES['f'], 'Fahrenheit')
-        self.assertEqual(pyco.UNIT_NAMES['k'], 'Kelvin')
+        self.assertEqual(pyco._UNIT_NAMES['c'], 'Celsius')
+        self.assertEqual(pyco._UNIT_NAMES['f'], 'Fahrenheit')
+        self.assertEqual(pyco._UNIT_NAMES['k'], 'Kelvin')
 
 class TestPycoCaseInsensitive(unittest.TestCase):
     """Test case insensitive functionality of the convert function"""
@@ -1418,7 +1555,7 @@ class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
         external_units.update(['c', 'f', 'k'])
         
         # Get all units from UNIT_NAMES dictionary
-        unit_names_keys = set(pyco.UNIT_NAMES.keys())
+        unit_names_keys = set(pyco._UNIT_NAMES.keys())
         
         # Check that they match exactly
         missing_from_unit_names = external_units - unit_names_keys
@@ -1433,10 +1570,10 @@ class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
         """Test that conversion matrix doesn't have conflicting bidirectional entries"""
         conflicts = []
         
-        for (unit1, unit2), factor1 in pyco.CONVERSION_MATRIX.items():
+        for (unit1, unit2), factor1 in pyco._CONVERSION_MATRIX.items():
             # Check if reverse entry exists
-            if (unit2, unit1) in pyco.CONVERSION_MATRIX:
-                factor2 = pyco.CONVERSION_MATRIX[(unit2, unit1)]
+            if (unit2, unit1) in pyco._CONVERSION_MATRIX:
+                factor2 = pyco._CONVERSION_MATRIX[(unit2, unit1)]
                 
                 # Skip function-based conversions (like temperature) as they have explicit bidirectional entries
                 if callable(factor1) or callable(factor2):
@@ -1453,10 +1590,10 @@ class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
     
     def test_all_categories_have_units(self):
         """Test that all categories returned by get_all_categories() have at least one unit"""
-        categories = pyco.get_all_categories()
+        categories = pyco._get_all_categories()
         
         for category in categories:
-            units = pyco.get_units_by_category(category)
+            units = pyco._get_units_by_category(category)
             self.assertGreater(len(units), 0, 
                               f"Category '{category}' has no units")
     
@@ -1464,7 +1601,7 @@ class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
         """Test that all units in conversion matrix follow category.unit format (except temperature)"""
         invalid_formats = []
         
-        for (unit1, unit2), _ in pyco.CONVERSION_MATRIX.items():
+        for (unit1, unit2), _ in pyco._CONVERSION_MATRIX.items():
             # Check unit1 format
             if '.' not in unit1:
                 invalid_formats.append(f"Unit '{unit1}' doesn't follow category.unit format")
