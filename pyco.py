@@ -2,6 +2,7 @@
 import sys
 import difflib
 import builtins
+import math
 
 from math import *
 from random import *
@@ -113,23 +114,26 @@ def _findGlobals(term):
     # Handle simple string search (no wildcards)
     if not "*" in term:
         found = []
-        # Search globals (excluding modules and exceptions)
+        # Search globals (excluding modules, exceptions, and classes)
         for current in globals():
             if current.startswith('_'):
                 continue
             obj = globals()[current]
             if isinstance(obj, types.ModuleType):
                 continue
-            # Exclude exception classes
-            if isinstance(obj, type) and issubclass(obj, BaseException):
+            # Exclude all classes
+            if isinstance(obj, type):
                 continue
             if _matches_term(current, obj, term):
                 found.append(_format_with_docstring(current, obj))
-        # Search builtins (excluding exceptions)
+        # Search builtins (excluding exceptions and classes)
         for current in _get_useful_builtins():
             if any(current == f[0] for f in found):
                 continue
             obj = getattr(builtins, current, None)
+            # Exclude classes
+            if isinstance(obj, type):
+                continue
             if _matches_term(current, obj, term):
                 found.append(_format_with_docstring(current, obj))
         return sorted(found, key=lambda x: x[0].lower())
@@ -248,8 +252,8 @@ def _findGlobals(term):
             if isinstance(obj, types.ModuleType):
                 continue
             
-            # Skip exception classes
-            if isinstance(obj, type) and issubclass(obj, BaseException):
+            # Exclude all classes
+            if isinstance(obj, type):
                 continue
             
             # Get docstring for matching
