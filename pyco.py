@@ -72,17 +72,18 @@ def _get_docstring_summary(obj):
     return None
 
 def _format_with_docstring(name, obj):
-    """Format a name with its docstring summary or type info for variables."""
+    """Format a name with its docstring summary or type info for variables.
+    Returns a tuple of (name, description)."""
     # For non-callable objects (variables/constants), show type info
     if not callable(obj):
         type_name = type(obj).__name__
-        return f"{name} - variable of type {type_name}"
+        return (name, f"variable of type {type_name}")
     
     # For callable objects, show docstring summary
     summary = _get_docstring_summary(obj)
     if summary:
-        return f"{name} - {summary}"
-    return name
+        return (name, summary)
+    return (name, "")
 
 def _matches_term(name, obj, term):
     """Check if term matches the name or the docstring of an object."""
@@ -96,8 +97,10 @@ def _matches_term(name, obj, term):
         return True
     return False
 
-def find(term):
+def _findGlobals(term):
     """Find all global variables or functions that match the given term pattern.
+    
+    Returns a list of (name, description) tuples.
     
     Supports wildcard patterns:
     - term* : finds items starting with 'term'
@@ -123,12 +126,12 @@ def find(term):
                 found.append(_format_with_docstring(current, obj))
         # Search builtins (excluding exceptions)
         for current in _get_useful_builtins():
-            if any(current == f.split(' - ')[0] for f in found):
+            if any(current == f[0] for f in found):
                 continue
             obj = getattr(builtins, current, None)
             if _matches_term(current, obj, term):
                 found.append(_format_with_docstring(current, obj))
-        return sorted(found, key=lambda x: x.lower())
+        return sorted(found, key=lambda x: x[0].lower())
     
     # Handle wildcard patterns
     lastDot = term.rfind('.')
@@ -207,11 +210,11 @@ def find(term):
                         matching_methods.append(method_name)
                 
                 if matching_methods:
-                    found_results.append(f"{obj_name}: {' '.join(sorted(matching_methods))}")
+                    found_results.append((obj_name + ":", ' '.join(sorted(matching_methods))))
             except:
                 pass
         
-        return sorted(found_results, key=lambda x: x.lower())
+        return sorted(found_results, key=lambda x: x[0].lower())
     else:
         # Determine wildcard pattern
         starts_with_star = term.startswith("*")
@@ -265,7 +268,31 @@ def find(term):
             if match:
                 found_results.append(_format_with_docstring(current, obj))
         
-        return sorted(found_results, key=lambda x: x.lower())
+        return sorted(found_results, key=lambda x: x[0].lower())
+
+def find(term="*"):
+    """Find all global variables or functions that match the given term pattern.
+    
+    Supports wildcard patterns:
+    - term* : finds items starting with 'term'
+    - *term : finds items ending with 'term'
+    - *term* : finds items containing 'term'
+    - obj.method* : finds methods in 'obj' starting with 'method'
+    - *obj*.method* : finds methods matching 'method*' in objects matching '*obj*'
+    
+    Returns a list of strings in the format "name - description".
+    """
+    results = _findGlobals(term)
+    output = []
+    for name, desc in results:
+        if name.endswith(':'):
+            # Object method pattern: "obj: method1 method2"
+            output.append(f"{name} {desc}")
+        elif desc:
+            output.append(f"{name} - {desc}")
+        else:
+            output.append(name)
+    return output
 
 def _print_buffered(lines):
     """
