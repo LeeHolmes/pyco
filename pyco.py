@@ -1,9 +1,10 @@
 # pyco calculator customizations
 import sys
-import math
-from math import *
 import difflib
 import builtins
+
+from math import *
+from random import *
 
 if sys.implementation.name == 'cpython':
     import statistics
