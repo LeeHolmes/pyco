@@ -3,6 +3,7 @@ import sys
 import difflib
 import builtins
 import math
+import inspect
 
 from math import *
 from random import *
@@ -75,17 +76,29 @@ def _get_docstring_summary(obj):
 
 def _format_with_docstring(name, obj):
     """Format a name with its docstring summary or type info for variables.
-    Returns a tuple of (name, description)."""
+    Returns a tuple of (name, description, kind) where kind is 'function', 'function_noargs', or 'variable'."""
     # For non-callable objects (variables/constants), show type info
     if not callable(obj):
         type_name = type(obj).__name__
-        return (name, f"variable of type {type_name}")
+        return (name, f"variable of type {type_name}", "variable")
     
-    # For callable objects, show docstring summary
+    # For callable objects, determine if it takes arguments
+    kind = "function"
+    try:
+        sig = inspect.signature(obj)
+        # Check if all parameters have defaults or if there are no parameters
+        params = list(sig.parameters.values())
+        if len(params) == 0:
+            kind = "function_noargs"
+    except (ValueError, TypeError):
+        # Some builtins don't support signature inspection
+        pass
+    
+    # Show docstring summary
     summary = _get_docstring_summary(obj)
     if summary:
-        return (name, summary)
-    return (name, "")
+        return (name, summary, kind)
+    return (name, "", kind)
 
 def _matches_term(name, obj, term):
     """Check if term matches the name or the docstring of an object."""
@@ -102,7 +115,7 @@ def _matches_term(name, obj, term):
 def _findGlobals(term):
     """Find all global variables or functions that match the given term pattern.
     
-    Returns a list of (name, description) tuples.
+    Returns a list of (name, description, kind) tuples.
     
     Supports wildcard patterns:
     - term* : finds items starting with 'term'
@@ -215,7 +228,7 @@ def _findGlobals(term):
                         matching_methods.append(method_name)
                 
                 if matching_methods:
-                    found_results.append((obj_name + ":", ' '.join(sorted(matching_methods))))
+                    found_results.append((obj_name + ":", ' '.join(sorted(matching_methods)), "method"))
             except:
                 pass
         
@@ -289,7 +302,9 @@ def find(term="*"):
     """
     results = _findGlobals(term)
     output = []
-    for name, desc in results:
+    for item in results:
+        name = item[0]
+        desc = item[1]
         if name.endswith(':'):
             # Object method pattern: "obj: method1 method2"
             output.append(f"{name} {desc}")
