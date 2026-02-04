@@ -802,16 +802,282 @@ def _get_connected_units(unit):
     
     return connections
 
+import ast
+import keyword
+import re
+
+def _escape_keywords(unit_str):
+    """Escape Python keywords in a unit string for parsing."""
+    escaped_str = unit_str
+    escaped_keywords = {}
+    for kw in keyword.kwlist:
+        pattern = r'\b' + kw + r'\b'
+        if re.search(pattern, escaped_str):
+            replacement = f'{kw}_escaped_unit_'
+            escaped_keywords[replacement] = kw
+            escaped_str = re.sub(pattern, replacement, escaped_str)
+    return escaped_str, escaped_keywords
+
+def _unescape_keywords(text, escaped_keywords):
+    """Restore escaped keywords back to their original form."""
+    for replacement, original in escaped_keywords.items():
+        text = text.replace(replacement, original)
+    return text
+
+def _get_unit_conversion_factor(from_unit, to_unit):
+    """
+    Get the conversion factor from one simple unit to another.
+    Returns the factor such that: from_value * factor = to_value
+    Returns None if conversion is not possible.
+    
+    For function-based conversions (like temperature), computes the scale factor
+    using f(1) - f(0), which gives the rate of change.
+    """
+    from_unit = from_unit.strip()
+    to_unit = to_unit.strip()
+    
+    if from_unit.lower() == to_unit.lower():
+        return 1.0
+    
+    if not _is_valid_unit(from_unit) or not _is_valid_unit(to_unit):
+        return None
+    
+    try:
+        from_internal = _to_internal_unit(from_unit)
+        to_internal = _to_internal_unit(to_unit)
+        
+        # Check for direct conversion first
+        factor = _get_conversion_factor(from_internal, to_internal)
+        if factor is not None:
+            if callable(factor):
+                # For function-based conversions (like temperature with offset),
+                # compute the scale factor: f(1) - f(0) gives the rate of change
+                return factor(1) - factor(0)
+            return factor
+        
+        # Try multi-step conversion
+        visited = set()
+        queue = [(from_internal, 1.0)]
+        
+        while queue:
+            current_unit, current_factor = queue.pop(0)
+            
+            if current_unit == to_internal:
+                return current_factor
+            
+            if current_unit in visited:
+                continue
+            
+            visited.add(current_unit)
+            
+            connected = _get_connected_units(current_unit)
+            for next_unit, conv in connected:
+                if next_unit not in visited:
+                    if callable(conv):
+                        # Compute scale factor from function
+                        scale = conv(1) - conv(0)
+                        queue.append((next_unit, current_factor * scale))
+                    else:
+                        queue.append((next_unit, current_factor * conv))
+        
+        return None
+    except:
+        return None
+
+def _evaluate_unit_expression(expr_str):
+    """
+    Parse a unit expression and return a function that computes the conversion factor.
+    
+    Returns a tuple: (is_valid, eval_func) where eval_func takes a target expression
+    and returns the conversion factor, or None if not computable.
+    """
+    escaped_str, escaped_keywords = _escape_keywords(expr_str)
+    
+    try:
+        tree = ast.parse(escaped_str, mode='eval')
+    except SyntaxError:
+        return (False, None)
+    
+    def get_unit_from_node(node):
+        """Extract unit name from an AST node."""
+        if isinstance(node, ast.Name):
+            return _unescape_keywords(node.id, escaped_keywords)
+        elif isinstance(node, ast.BinOp):
+            # Return the unparsed expression
+            unparsed = ast.unparse(node) if hasattr(ast, 'unparse') else None
+            if unparsed:
+                return _unescape_keywords(unparsed, escaped_keywords)
+        return None
+    
+    return (True, tree.body)
+
+def _compute_conversion_factor(from_expr, to_expr):
+    """
+    Compute the conversion factor between two unit expressions.
+    
+    Recursively handles expressions like "(ft*in)/h" -> "(m*cm)/s"
+    
+    Returns the conversion factor, or None if conversion is not possible.
+    """
+    from_escaped, from_keywords = _escape_keywords(from_expr)
+    to_escaped, to_keywords = _escape_keywords(to_expr)
+    
+    try:
+        from_tree = ast.parse(from_escaped, mode='eval').body
+        to_tree = ast.parse(to_escaped, mode='eval').body
+    except SyntaxError:
+        return None
+    
+    def get_factor(from_node, to_node):
+        """Recursively compute conversion factor between two AST nodes."""
+        # Both are simple names (base case)
+        if isinstance(from_node, ast.Name) and isinstance(to_node, ast.Name):
+            from_unit = _unescape_keywords(from_node.id, from_keywords)
+            to_unit = _unescape_keywords(to_node.id, to_keywords)
+            return _get_unit_conversion_factor(from_unit, to_unit)
+        
+        # Both are binary operations
+        if isinstance(from_node, ast.BinOp) and isinstance(to_node, ast.BinOp):
+            # Must have the same operator type
+            if type(from_node.op) != type(to_node.op):
+                return None
+            
+            # Recursively compute factors for left and right operands
+            left_factor = get_factor(from_node.left, to_node.left)
+            right_factor = get_factor(from_node.right, to_node.right)
+            
+            if left_factor is None or right_factor is None:
+                return None
+            
+            # Combine based on operator
+            if isinstance(from_node.op, ast.Mult):
+                # (A * B) -> (C * D): factor = (C/A) * (D/B)
+                return left_factor * right_factor
+            elif isinstance(from_node.op, ast.Div):
+                # (A / B) -> (C / D): factor = (C/A) / (D/B) = (C/A) * (B/D)
+                return left_factor / right_factor
+            else:
+                return None
+        
+        # Mismatched structures
+        return None
+    
+    return get_factor(from_tree, to_tree)
+
+def _is_combined_unit(unit_str):
+    """Check if a unit string represents a combined unit (e.g., "mi/h" or "ft*lb")."""
+    escaped_str, _ = _escape_keywords(unit_str)
+    try:
+        tree = ast.parse(escaped_str, mode='eval')
+        return isinstance(tree.body, ast.BinOp)
+    except SyntaxError:
+        return False
+
+def _get_all_units_in_expression(expr_str):
+    """Extract all unit names from a unit expression."""
+    escaped_str, escaped_keywords = _escape_keywords(expr_str)
+    
+    try:
+        tree = ast.parse(escaped_str, mode='eval')
+    except SyntaxError:
+        return [expr_str]
+    
+    units = []
+    
+    def extract_names(node):
+        if isinstance(node, ast.Name):
+            units.append(_unescape_keywords(node.id, escaped_keywords))
+        elif isinstance(node, ast.BinOp):
+            extract_names(node.left)
+            extract_names(node.right)
+    
+    extract_names(tree.body)
+    return units
+
+def _convert_simple(from_unit, to_unit, value):
+    """
+    Convert a value from one simple unit to another.
+    
+    This is the internal conversion function that handles single units only.
+    Uses BFS to find conversion path, applying functions directly for 
+    conversions with offsets (like temperature).
+    
+    Args:
+        from_unit (str): The source unit
+        to_unit (str): The target unit  
+        value (float): The value to convert
+        
+    Returns:
+        float: The converted value, or None if units are invalid
+        
+    Raises:
+        ValueError: If no conversion path exists between valid units
+    """
+    if from_unit.lower() == to_unit.lower():
+        return value
+    
+    # Check if units are valid before attempting conversion
+    from_unit_valid = _is_valid_unit(from_unit)
+    to_unit_valid = _is_valid_unit(to_unit)
+    
+    if not from_unit_valid or not to_unit_valid:
+        return None
+    
+    # Convert to internal format
+    from_unit_internal = _to_internal_unit(from_unit)
+    to_unit_internal = _to_internal_unit(to_unit)
+    
+    # Check for direct conversion first
+    conversion_factor_or_func = _get_conversion_factor(from_unit_internal, to_unit_internal)
+    if conversion_factor_or_func is not None:
+        if callable(conversion_factor_or_func):
+            return conversion_factor_or_func(value)
+        else:
+            return value * conversion_factor_or_func
+    
+    # Use BFS to find conversion path, applying functions/factors to the value
+    visited = set()
+    queue = [(from_unit_internal, value)]
+    
+    while queue:
+        current_unit, current_value = queue.pop(0)
+        
+        if current_unit == to_unit_internal:
+            return current_value
+        
+        if current_unit in visited:
+            continue
+        
+        visited.add(current_unit)
+        
+        connected = _get_connected_units(current_unit)
+        for next_unit, conv in connected:
+            if next_unit not in visited:
+                if callable(conv):
+                    new_value = conv(current_value)
+                else:
+                    new_value = current_value * conv
+                queue.append((next_unit, new_value))
+    
+    # If we get here, no conversion path was found
+    raise ValueError(f"No conversion path found from '{from_unit}' to '{to_unit}'")
+
 def convert(from_unit="", to_unit="", value=0):
     """
     Convert a value from one unit to another using dynamic programming.
     
     This function can handle direct conversions or find multi-step conversion paths
-    through intermediate units. For example:
+    through intermediate units. It also supports combined units:
+    - Ratio units like "mi/h" or "m/s" (division)
+    - Product units like "ft*lb" or "m*kg" (multiplication)
+    
+    For example:
     - Direct: miles -> kilometers 
     - Multi-step: miles -> feet -> inches
     - Complex: grams -> pounds -> ounces
     - Temperature: celsius -> fahrenheit (using conversion functions for offsets)
+    - Ratio units: mi/h -> m/s, km/h -> mph
+    - Product units: ft*lb -> m*kg, in*oz -> cm*g
     
     If from_unit or to_unit are empty strings, displays available units instead.
     
@@ -819,8 +1085,8 @@ def convert(from_unit="", to_unit="", value=0):
     between any two units in the conversion matrix.
     
     Args:
-        from_unit (str): The source unit
-        to_unit (str): The target unit  
+        from_unit (str): The source unit (can be simple like "mi", ratio like "mi/h", or product like "ft*lb")
+        to_unit (str): The target unit (can be simple like "km", ratio like "m/s", or product like "m*kg")
         value (float): The value to convert
         
     Returns:
@@ -836,6 +1102,10 @@ def convert(from_unit="", to_unit="", value=0):
         63360.0
         >>> convert('c', 'f', 0)  # Temperature: 0°C to 32°F
         32.0
+        >>> convert('mi/h', 'm/s', 10)  # Ratio units: 10 mph to m/s
+        4.4704
+        >>> convert('ft*lb', 'm*kg', 1)  # Product units: foot-pounds to meter-kg
+        0.1382549544
         >>> convert()  # Display available units
     """
     # If from_unit or to_unit are empty, display available units
@@ -843,6 +1113,14 @@ def convert(from_unit="", to_unit="", value=0):
         header_lines = [
             "Convert - convert values between two units.",
             "Usage: convert(from, to, value)",
+            "",
+            "Supports combined units:",
+            "  Ratio units (/):",
+            "    convert('mi/h', 'm/s', 60)  # 60 mph to m/s",
+            "    convert('km/h', 'mi/h', 100)  # 100 km/h to mph",
+            "  Product units (*):",
+            "    convert('ft*lb', 'm*kg', 1)  # foot-pounds to meter-kg",
+            "    convert('in*oz', 'cm*g', 10)  # inch-ounces to cm-grams",
             "",
             "Available units are:"
         ]
@@ -854,6 +1132,43 @@ def convert(from_unit="", to_unit="", value=0):
     if from_unit.lower() == to_unit.lower():
         return value
     
+    # Check if we're dealing with combined units (expressions with * or /)
+    from_is_combined = _is_combined_unit(from_unit)
+    to_is_combined = _is_combined_unit(to_unit)
+    
+    # Handle combined unit conversions (e.g., mi/h -> m/s or ft*lb -> m*kg or (ft*in)/h -> (m*cm)/s)
+    if from_is_combined or to_is_combined:
+        # Both must be combined units for combined conversion
+        if from_is_combined != to_is_combined:
+            error_lines = [f"Cannot convert between simple and combined units: '{from_unit}' to '{to_unit}'"]
+            _print_buffered(error_lines)
+            return None
+        
+        # Check if all component units are valid
+        from_units = _get_all_units_in_expression(from_unit)
+        to_units = _get_all_units_in_expression(to_unit)
+        
+        invalid_units = []
+        for unit in from_units + to_units:
+            if not _is_valid_unit(unit):
+                invalid_units.append(unit)
+        
+        if invalid_units:
+            error_lines = [f"Invalid unit(s): {', '.join(invalid_units)}. Type 'units' to see available conversions."]
+            _print_buffered(error_lines)
+            return None
+        
+        # Compute the conversion factor using recursive AST evaluation
+        factor = _compute_conversion_factor(from_unit, to_unit)
+        
+        if factor is None:
+            error_lines = [f"Cannot convert '{from_unit}' to '{to_unit}'. Expressions must have matching structure."]
+            _print_buffered(error_lines)
+            return None
+        
+        return value * factor
+    
+    # Handle simple unit conversion
     # Check if units are valid before attempting conversion
     from_unit_valid = _is_valid_unit(from_unit)
     to_unit_valid = _is_valid_unit(to_unit)
@@ -876,46 +1191,10 @@ def convert(from_unit="", to_unit="", value=0):
         _print_buffered(all_lines)
         return None
     
-    # Convert to internal format
-    from_unit_internal = _to_internal_unit(from_unit)
-    to_unit_internal = _to_internal_unit(to_unit)
-    
-    # Check for direct conversion first
-    conversion_factor_or_func = _get_conversion_factor(from_unit_internal, to_unit_internal)
-    if conversion_factor_or_func is not None:
-        if callable(conversion_factor_or_func):
-            return conversion_factor_or_func(value)
-        else:
-            return value * conversion_factor_or_func
-    
-    # Use Dijkstra-like algorithm to find shortest conversion path
-    visited = set()
-    queue = [(from_unit_internal, value)]  # (current_unit, current_value)
-    
-    while queue:
-        current_unit, current_value = queue.pop(0)
-        
-        if current_unit == to_unit_internal:
-            return current_value
-            
-        if current_unit in visited:
-            continue
-            
-        visited.add(current_unit)
-        
-        # Get all units connected to current_unit
-        connected_units = _get_connected_units(current_unit)
-        
-        for next_unit, conversion_factor_or_func in connected_units:
-            if next_unit not in visited:
-                if callable(conversion_factor_or_func):
-                    new_value = conversion_factor_or_func(current_value)
-                else:
-                    new_value = current_value * conversion_factor_or_func
-                queue.append((next_unit, new_value))
-    
-    # If we get here, no conversion path was found
-    raise ValueError(f"No conversion path found from '{from_unit}' to '{to_unit}'")
+    try:
+        return _convert_simple(from_unit, to_unit, value)
+    except ValueError as e:
+        raise e
 
 
 

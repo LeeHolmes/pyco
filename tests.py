@@ -1951,6 +1951,244 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         self.assertIsNone(result)
         self.assertIn("Could not convert the unit 'celciu'", output)
 
+class TestPycoCombinedUnitConversions(unittest.TestCase):
+    """Test combined unit conversions (e.g., mi/h to m/s) in pyco.py"""
+    
+    def test_convert_mph_to_mps(self):
+        """Test miles per hour to meters per second using combined unit syntax"""
+        # 10 mi/h = 10 * 1609.344 / 3600 m/s = 4.4704 m/s
+        self.assertAlmostEqual(pyco.convert('mi/h', 'm/s', 10), 4.4704)
+        self.assertAlmostEqual(pyco.convert('mi/h', 'm/s', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mi/h', 'm/s', 60), 26.8224)
+    
+    def test_convert_mps_to_mph(self):
+        """Test meters per second to miles per hour using combined unit syntax"""
+        self.assertAlmostEqual(pyco.convert('m/s', 'mi/h', 4.4704), 10.0, places=4)
+        self.assertAlmostEqual(pyco.convert('m/s', 'mi/h', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('m/s', 'mi/h', 26.8224), 60.0, places=4)
+    
+    def test_convert_kph_to_mph(self):
+        """Test kilometers per hour to miles per hour using combined unit syntax"""
+        # 100 km/h = 100 / 1.609344 mi/h ≈ 62.137 mi/h
+        self.assertAlmostEqual(pyco.convert('km/h', 'mi/h', 100), 62.13711922373339)
+        self.assertAlmostEqual(pyco.convert('km/h', 'mi/h', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('km/h', 'mi/h', 160.9344), 100.0, places=4)
+    
+    def test_convert_mph_to_kph(self):
+        """Test miles per hour to kilometers per hour using combined unit syntax"""
+        self.assertAlmostEqual(pyco.convert('mi/h', 'km/h', 60), 96.56064)
+        self.assertAlmostEqual(pyco.convert('mi/h', 'km/h', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('mi/h', 'km/h', 100), 160.9344)
+    
+    def test_convert_mps_to_kph(self):
+        """Test meters per second to kilometers per hour using combined unit syntax"""
+        # 1 m/s = 3.6 km/h
+        self.assertAlmostEqual(pyco.convert('m/s', 'km/h', 1), 3.6)
+        self.assertAlmostEqual(pyco.convert('m/s', 'km/h', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('m/s', 'km/h', 10), 36.0)
+    
+    def test_convert_kph_to_mps(self):
+        """Test kilometers per hour to meters per second using combined unit syntax"""
+        # 3.6 km/h = 1 m/s
+        self.assertAlmostEqual(pyco.convert('km/h', 'm/s', 3.6), 1.0)
+        self.assertAlmostEqual(pyco.convert('km/h', 'm/s', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('km/h', 'm/s', 36), 10.0)
+    
+    def test_convert_ft_per_s_to_m_per_s(self):
+        """Test feet per second to meters per second using combined unit syntax"""
+        # 1 ft/s = 0.3048 m/s
+        self.assertAlmostEqual(pyco.convert('ft/s', 'm/s', 1), 0.3048)
+        self.assertAlmostEqual(pyco.convert('ft/s', 'm/s', 100), 30.48)
+    
+    def test_convert_m_per_s_to_ft_per_s(self):
+        """Test meters per second to feet per second using combined unit syntax"""
+        self.assertAlmostEqual(pyco.convert('m/s', 'ft/s', 0.3048), 1.0, places=4)
+        self.assertAlmostEqual(pyco.convert('m/s', 'ft/s', 30.48), 100.0, places=4)
+    
+    def test_convert_same_combined_unit(self):
+        """Test that converting a combined unit to itself returns the same value"""
+        self.assertEqual(pyco.convert('mi/h', 'mi/h', 50), 50)
+        self.assertEqual(pyco.convert('km/h', 'km/h', 100), 100)
+        self.assertEqual(pyco.convert('m/s', 'm/s', 25), 25)
+    
+    def test_convert_km_per_min_to_m_per_s(self):
+        """Test kilometers per minute to meters per second"""
+        # 1 km/min = 1000 m / 60 s = 16.667 m/s
+        self.assertAlmostEqual(pyco.convert('km/min', 'm/s', 1), 1000/60, places=4)
+    
+    def test_convert_mi_per_min_to_ft_per_s(self):
+        """Test miles per minute to feet per second"""
+        # 1 mi/min = 5280 ft / 60 s = 88 ft/s
+        self.assertAlmostEqual(pyco.convert('mi/min', 'ft/s', 1), 88.0, places=4)
+    
+    def test_convert_combined_unit_invalid_numerator(self):
+        """Test error handling for invalid numerator in combined unit"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('xyz/h', 'm/s', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Invalid unit", output)
+    
+    def test_convert_combined_unit_invalid_denominator(self):
+        """Test error handling for invalid denominator in combined unit"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('mi/xyz', 'm/s', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Invalid unit", output)
+    
+    def test_convert_mixed_simple_and_combined_units(self):
+        """Test error handling when mixing simple and combined units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('mi/h', 'km', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Cannot convert between simple and combined units", output)
+    
+    def test_convert_in_per_s_to_cm_per_s(self):
+        """Test inches per second to centimeters per second"""
+        # 1 in/s = 2.54 cm/s
+        self.assertAlmostEqual(pyco.convert('in/s', 'cm/s', 1), 2.54)
+        self.assertAlmostEqual(pyco.convert('in/s', 'cm/s', 10), 25.4)
+
+class TestPycoProductUnitConversions(unittest.TestCase):
+    """Test product unit conversions (e.g., ft*lb to m*kg) in pyco.py"""
+    
+    def test_convert_ft_lb_to_m_kg(self):
+        """Test foot-pounds to meter-kilograms conversion"""
+        # 1 ft*lb = 0.3048 m * 0.453592 kg = 0.1382548416 m*kg
+        self.assertAlmostEqual(pyco.convert('ft*lb', 'm*kg', 1), 0.1382548416)
+        self.assertAlmostEqual(pyco.convert('ft*lb', 'm*kg', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('ft*lb', 'm*kg', 10), 1.382548416)
+    
+    def test_convert_m_kg_to_ft_lb(self):
+        """Test meter-kilograms to foot-pounds conversion"""
+        self.assertAlmostEqual(pyco.convert('m*kg', 'ft*lb', 0.1382548416), 1.0, places=4)
+        self.assertAlmostEqual(pyco.convert('m*kg', 'ft*lb', 0), 0.0)
+        self.assertAlmostEqual(pyco.convert('m*kg', 'ft*lb', 1), 7.233019751259111)
+    
+    def test_convert_in_oz_to_cm_g(self):
+        """Test inch-ounces to centimeter-grams conversion"""
+        # 1 in*oz = 2.54 cm * 28.3495 g = 72.00773 cm*g
+        self.assertAlmostEqual(pyco.convert('in*oz', 'cm*g', 1), 72.00773, places=4)
+        self.assertAlmostEqual(pyco.convert('in*oz', 'cm*g', 0), 0.0)
+    
+    def test_convert_cm_g_to_in_oz(self):
+        """Test centimeter-grams to inch-ounces conversion"""
+        self.assertAlmostEqual(pyco.convert('cm*g', 'in*oz', 72.00773), 1.0, places=4)
+        self.assertAlmostEqual(pyco.convert('cm*g', 'in*oz', 0), 0.0)
+    
+    def test_convert_m_kg_to_cm_g(self):
+        """Test meter-kilograms to centimeter-grams conversion"""
+        # 1 m*kg = 100 cm * 1000 g = 100000 cm*g
+        self.assertAlmostEqual(pyco.convert('m*kg', 'cm*g', 1), 100000.0)
+        self.assertAlmostEqual(pyco.convert('m*kg', 'cm*g', 0), 0.0)
+    
+    def test_convert_cm_g_to_m_kg(self):
+        """Test centimeter-grams to meter-kilograms conversion"""
+        self.assertAlmostEqual(pyco.convert('cm*g', 'm*kg', 100000), 1.0, places=4)
+        self.assertAlmostEqual(pyco.convert('cm*g', 'm*kg', 0), 0.0)
+    
+    def test_convert_same_product_unit(self):
+        """Test that converting a product unit to itself returns the same value"""
+        self.assertEqual(pyco.convert('ft*lb', 'ft*lb', 50), 50)
+        self.assertEqual(pyco.convert('m*kg', 'm*kg', 100), 100)
+    
+    def test_convert_mi_lb_to_km_kg(self):
+        """Test mile-pounds to kilometer-kilograms conversion"""
+        # 1 mi*lb = 1.609344 km * 0.453592 kg = 0.7302619... km*kg
+        self.assertAlmostEqual(pyco.convert('mi*lb', 'km*kg', 1), 1.609344 * 0.453592, places=4)
+    
+    def test_convert_product_unit_invalid_first(self):
+        """Test error handling for invalid first unit in product unit"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('xyz*lb', 'm*kg', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Invalid unit", output)
+    
+    def test_convert_product_unit_invalid_second(self):
+        """Test error handling for invalid second unit in product unit"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('ft*xyz', 'm*kg', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Invalid unit", output)
+    
+    def test_convert_mixed_ratio_and_product_units(self):
+        """Test error handling when mixing ratio and product units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('mi/h', 'm*kg', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Expressions must have matching structure", output)
+    
+    def test_convert_mixed_product_and_ratio_units(self):
+        """Test error handling when mixing product and ratio units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('ft*lb', 'm/s', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Expressions must have matching structure", output)
+    
+    def test_convert_mixed_simple_and_product_units(self):
+        """Test error handling when mixing simple and product units"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('ft*lb', 'kg', 10)
+        self.assertIsNone(result)
+        output = captured_output.getvalue()
+        self.assertIn("Cannot convert between simple and combined units", output)
+
+class TestPycoNestedUnitConversions(unittest.TestCase):
+    """Test nested unit expression conversions (e.g., (ft*in)/h to (m*cm)/s) in pyco.py"""
+    
+    def test_convert_nested_product_over_time(self):
+        """Test (ft*in)/h to (m*cm)/s conversion"""
+        # ft -> m = 0.3048, in -> cm = 2.54, h -> s = 3600
+        # factor = (0.3048 * 2.54) / 3600
+        expected = 10 * (0.3048 * 2.54) / 3600
+        self.assertAlmostEqual(pyco.convert('(ft*in)/h', '(m*cm)/s', 10), expected, places=6)
+    
+    def test_convert_nested_reverse(self):
+        """Test (m*cm)/s to (ft*in)/h conversion"""
+        # Reverse of the above
+        expected = 10 / ((0.3048 * 2.54) / 3600)
+        self.assertAlmostEqual(pyco.convert('(m*cm)/s', '(ft*in)/h', 10), expected, places=4)
+    
+    def test_convert_nested_same_expression(self):
+        """Test that converting nested expression to itself returns the same value"""
+        self.assertEqual(pyco.convert('(ft*in)/h', '(ft*in)/h', 100), 100)
+    
+    def test_convert_nested_product_in_numerator(self):
+        """Test (mi*lb)/h to (km*kg)/s conversion"""
+        # mi -> km = 1.609344, lb -> kg = 0.453592, h -> s = 3600
+        expected = 5 * (1.609344 * 0.453592) / 3600
+        self.assertAlmostEqual(pyco.convert('(mi*lb)/h', '(km*kg)/s', 5), expected, places=6)
+    
+    def test_convert_deeply_nested_not_supported(self):
+        """Test that mismatched structures return None"""
+        # Different structure: (a*b)/c vs a/(b*c)
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('(ft*in)/h', 'ft/(in*h)', 10)
+        self.assertIsNone(result)
+    
+    def test_convert_triple_product(self):
+        """Test (ft*in*lb) to (m*cm*kg) - left-associative parsing"""
+        # This parses as ((ft*in)*lb) -> ((m*cm)*kg)
+        # ft->m = 0.3048, in->cm = 2.54, lb->kg = 0.453592
+        expected = 1 * 0.3048 * 2.54 * 0.453592
+        result = pyco.convert('ft*in*lb', 'm*cm*kg', 1)
+        self.assertAlmostEqual(result, expected, places=6)
+
 if __name__ == '__main__':
     # Create a test suite
     suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
