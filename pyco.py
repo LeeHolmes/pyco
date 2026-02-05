@@ -582,7 +582,8 @@ _CONVERSION_MATRIX = {
     ('area.cm2', 'area.m2'): 1/10000,
     ('area.ft2', 'area.m2'): 0.092903,
     ('area.ft2', 'area.ac'): 1/43560,
-    
+    ('area.m2', 'area.ha'): 1/10000,
+
     # Power conversions
     ('power.w', 'power.hp'): 1/745.7,
 }
@@ -644,6 +645,7 @@ _UNIT_NAMES = {
     'cm2': 'centimeters^2',
     'm2': 'meters^2',
     'ac': 'acres',
+    'ha': 'hectares',
     
     # Power units
     'w': 'watts',

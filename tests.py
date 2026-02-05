@@ -790,6 +790,13 @@ class TestPycoAreaConversions(unittest.TestCase):
         self.assertAlmostEqual(pyco.convert('cm2', 'in2', 6.4516), 1, places=4)
         self.assertAlmostEqual(pyco.convert('cm2', 'in2', 20), 3.10001, places=4)
     
+    def test_hectares_conversion(self):
+        """Test hectares conversion"""
+        self.assertAlmostEqual(pyco.convert('m2', 'ha', 10000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('ha', 'm2', 1), 10000, places=1)
+        self.assertAlmostEqual(pyco.convert('ac', 'ha', 2.471054), 1, places=4)
+        self.assertAlmostEqual(pyco.convert('ha', 'ac', 1), 2.471054, places=4)
+    
 class TestPycoPowerConversions(unittest.TestCase):
     """Test power conversion functions"""
     
