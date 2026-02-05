@@ -1265,6 +1265,11 @@ class TestPycoCategoryConversions(unittest.TestCase):
             with self.subTest(category=category):
                 units = pyco._get_units_by_category(category)
                 
+                # For currency, only test a few common currencies to avoid slow tests
+                if category == 'currency':
+                    test_currencies = ['$usd', '$eur', '$gbp', '$jpy', '$cad']
+                    units = [u for u in units if u in test_currencies]
+                
                 # Skip categories with only one unit
                 if len(units) <= 1:
                     continue
@@ -1343,15 +1348,21 @@ class TestPycoUnitNames(unittest.TestCase):
         # Add temperature units (handled separately)
         matrix_units.update(['c', 'f', 'k'])
         
-        # Get units from UNIT_NAMES dictionary
-        unit_names_keys = set(pyco._UNIT_NAMES.keys())
+        # Get units from UNIT_NAMES dictionary, excluding currency display entries ($code_country)
+        unit_names_keys = set()
+        for key in pyco._UNIT_NAMES.keys():
+            # Currency display entries have format $code_country (e.g., $eur_germany)
+            # These are for display only, not conversion units
+            if key.startswith('$') and '_' in key:
+                continue
+            unit_names_keys.add(key)
         
         # Check that all matrix units have names
         missing_names = matrix_units - unit_names_keys
         self.assertEqual(missing_names, set(), 
                         f"UNIT_NAMES missing definitions for: {missing_names}")
         
-        # Check that no extra names exist
+        # Check that no extra names exist (excluding currency display entries)
         extra_names = unit_names_keys - matrix_units
         self.assertEqual(extra_names, set(),
                         f"UNIT_NAMES has extra definitions for: {extra_names}")
@@ -1370,8 +1381,10 @@ class TestPycoUnitNames(unittest.TestCase):
     def test_unit_names_format(self):
         """Test that unit names follow expected formatting"""
         for unit, name in pyco._UNIT_NAMES.items():
-            # Names should be lowercase except for proper nouns (Celsius, Fahrenheit, Kelvin)
-            if unit not in ['c', 'f', 'k']:  # Temperature units use short names now
+            # Names should be lowercase except for:
+            # - Temperature units (Celsius, Fahrenheit, Kelvin)
+            # - Currency units (have proper case country names like "Japan (Yen)")
+            if unit not in ['c', 'f', 'k'] and not unit.startswith('$'):
                 self.assertEqual(name, name.lower(), 
                                f"Unit name for '{unit}' should be lowercase: '{name}'")
             
@@ -1414,9 +1427,16 @@ class TestPycoUnitNames(unittest.TestCase):
         self.assertIn("feet", output)
         
         # Verify the output stays within width limit (each line should be <= 37 chars)
+        # Currency lines can be longer due to country names
         lines = output.split('\n')
+        in_currency_section = False
         for line in lines:
-            if line.strip() and not line.startswith('='):  # Skip empty lines and header
+            if 'CURRENCY' in line:
+                in_currency_section = True
+            elif line.strip() and line[0].isupper() and ':' in line:
+                in_currency_section = False
+            
+            if line.strip() and not line.startswith('=') and not in_currency_section:
                 self.assertLessEqual(len(line), 37, f"Line too long: '{line}' ({len(line)} chars)")
     
     def test_temperature_units_handling(self):
@@ -1554,8 +1574,14 @@ class TestPycoUnitAbbreviationConflicts(unittest.TestCase):
         # Add temperature units (handled separately)
         external_units.update(['c', 'f', 'k'])
         
-        # Get all units from UNIT_NAMES dictionary
-        unit_names_keys = set(pyco._UNIT_NAMES.keys())
+        # Get all units from UNIT_NAMES dictionary, excluding currency display entries ($code_country)
+        unit_names_keys = set()
+        for key in pyco._UNIT_NAMES.keys():
+            # Currency display entries have format $code_country (e.g., $eur_germany)
+            # These are for display only, not conversion units
+            if key.startswith('$') and '_' in key:
+                continue
+            unit_names_keys.add(key)
         
         # Check that they match exactly
         missing_from_unit_names = external_units - unit_names_keys
@@ -2053,6 +2079,20 @@ class TestPycoCombinedUnitConversions(unittest.TestCase):
         # 1 in/s = 2.54 cm/s
         self.assertAlmostEqual(pyco.convert('in/s', 'cm/s', 1), 2.54)
         self.assertAlmostEqual(pyco.convert('in/s', 'cm/s', 10), 25.4)
+    
+    def test_convert_currency_distance_per_volume(self):
+        """Test currency combined with distance per volume conversion"""
+        # Convert ($USD*mi)/gal to ($CAD*km)/l
+        # This combines currency exchange, distance, and volume conversions
+        result = pyco.convert('($USD*mi)/gal', '($CAD*km)/l', 10)
+        
+        # Verify result is a number and reasonable
+        self.assertIsInstance(result, float)
+        self.assertGreater(result, 0)
+        
+        # The conversion involves: USD->CAD (×1.369), mi->km (×1.609344), gal->l (÷3.78541)
+        # Expected: 10 * 1.369 * 1.609344 / 3.78541 ≈ 5.82
+        self.assertAlmostEqual(result, 5.82, places=1)
 
 class TestPycoProductUnitConversions(unittest.TestCase):
     """Test product unit conversions (e.g., ft*lb to m*kg) in pyco.py"""

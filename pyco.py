@@ -4,6 +4,8 @@ import difflib
 import builtins
 import math
 import inspect
+import gzip
+import base64
 
 from math import *
 from random import *
@@ -567,6 +569,8 @@ _CONVERSION_MATRIX = {
     ('power.w', 'power.hp'): 1/745.7,
 }
 
+_CURRENCY_DATA = "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"
+
 # Unit abbreviation to full English name mapping
 _UNIT_NAMES = {
     # Time units
@@ -628,6 +632,38 @@ _UNIT_NAMES = {
     'hp': 'horsepower',
 }
 
+def _matches_search(unit_abbrev, unit_full_name, search_term):
+    """Check if unit matches search term using fuzzy string matching for typos."""
+    if not search_term:
+        return True
+    
+    search_lower = search_term.lower()
+    unit_abbrev_lower = unit_abbrev.lower() if unit_abbrev else ''
+    unit_full_name_lower = unit_full_name.lower() if unit_full_name else ''
+    
+    # Exact partial match (high priority)
+    if (search_lower in unit_abbrev_lower or 
+        search_lower in unit_full_name_lower):
+        return True
+    
+    # Fuzzy matching for typos (similarity threshold of 0.6)
+    abbrev_similarity = difflib.SequenceMatcher(None, search_lower, unit_abbrev_lower).ratio()
+    name_similarity = difflib.SequenceMatcher(None, search_lower, unit_full_name_lower).ratio()
+    
+    # Also check if search term is similar to any word in the full name
+    name_words = unit_full_name_lower.split()
+    word_similarities = [difflib.SequenceMatcher(None, search_lower, word).ratio() for word in name_words]
+    max_word_similarity = max(word_similarities) if word_similarities else 0
+    
+    # Return True if any similarity score is above threshold
+    similarity_threshold = 0.6
+    return (abbrev_similarity >= similarity_threshold or 
+            name_similarity >= similarity_threshold or
+            max_word_similarity >= similarity_threshold)
+
+# Top currencies to show in units() when not searching
+_TOP_CURRENCIES = ['$usd', '$eur', '$gbp', '$jpy', '$cad', '$aud', '$chf', '$cny']
+
 def _generate_units_lines(search=""):
     """
     Generate lines for units display with optional search filtering.
@@ -640,44 +676,19 @@ def _generate_units_lines(search=""):
     """
     lines = [""]
     
-    def _matches_search(unit_abbrev, unit_full_name, search_term):
-        """Check if unit matches search term using fuzzy string matching for typos"""
-        if not search_term:
-            return True
-        
-        search_lower = search_term.lower()
-        unit_abbrev_lower = unit_abbrev.lower()
-        unit_full_name_lower = unit_full_name.lower()
-        
-        # Exact partial match (high priority)
-        if (search_lower in unit_abbrev_lower or 
-            search_lower in unit_full_name_lower):
-            return True
-        
-        # Fuzzy matching for typos (similarity threshold of 0.6)
-        abbrev_similarity = difflib.SequenceMatcher(None, search_lower, unit_abbrev_lower).ratio()
-        name_similarity = difflib.SequenceMatcher(None, search_lower, unit_full_name_lower).ratio()
-        
-        # Also check if search term is similar to any word in the full name
-        name_words = unit_full_name_lower.split()
-        word_similarities = [difflib.SequenceMatcher(None, search_lower, word).ratio() for word in name_words]
-        max_word_similarity = max(word_similarities) if word_similarities else 0
-        
-        # Return True if any similarity score is above threshold
-        similarity_threshold = 0.6
-        return (abbrev_similarity >= similarity_threshold or 
-                name_similarity >= similarity_threshold or
-                max_word_similarity >= similarity_threshold)
-    
     # Get all categories
     categories = _get_all_categories()
     categories.sort()  # Sort alphabetically
     
     for category in categories:
-        # Get units for this category
-        all_units = _get_units_by_category(category)
+        # Get all units for this category
+        if category == 'currency':
+            # Country-specific entries for searching: $eur_germany, $usd_united_states, etc.
+            all_units = [k for k in _UNIT_NAMES.keys() if k.startswith('$') and '_' in k]
+        else:
+            all_units = _get_units_by_category(category)
         
-        # Filter units based on search term
+        # Filter based on search term
         if search:
             units = []
             for unit in all_units:
@@ -685,15 +696,17 @@ def _generate_units_lines(search=""):
                 if _matches_search(unit, full_name, search):
                     units.append(unit)
         else:
-            units = all_units
-            
-        units.sort()  # Sort alphabetically
+            if category == 'currency':
+                # Show only top currencies (base codes) when not searching
+                units = [c for c in _TOP_CURRENCIES if c in _UNIT_NAMES]
+            else:
+                units = all_units
         
-        # Skip empty categories when searching
+        units.sort()
+        
         if not units:
             continue
-            
-        # Add category header only if we have units to show
+        
         lines.append(f"{category.upper()}:")
         
         # Format units in 2-column layout
@@ -701,41 +714,37 @@ def _generate_units_lines(search=""):
         while i < len(units):
             unit1 = units[i]
             full_name1 = _UNIT_NAMES.get(unit1, unit1)
+            display_unit1 = unit1.split('_')[0].upper() if category == 'currency' and '_' in unit1 else (unit1.upper() if category == 'currency' else unit1)
+            col1 = f"{display_unit1:<5} {full_name1}"
             
-            # Format first column: "abbr full_name" (max 18 chars to fit in 37 total)
-            col1 = f"{unit1:<4} {full_name1}"
-            
-            # Check if we have a second unit and if first column fits
             if len(col1) > 18:
-                # First column too long, put on its own line
                 lines.append(f"  {col1}")
                 i += 1
             elif i + 1 < len(units):
-                # Try to add second column
                 unit2 = units[i + 1]
                 full_name2 = _UNIT_NAMES.get(unit2, unit2)
-                col2 = f"{unit2:<4} {full_name2}"
+                display_unit2 = unit2.split('_')[0].upper() if category == 'currency' and '_' in unit2 else (unit2.upper() if category == 'currency' else unit2)
+                col2 = f"{display_unit2:<5} {full_name2}"
                 
                 if len(col2) > 18:
-                    # Second column too long, append first column alone
                     lines.append(f"  {col1}")
                     i += 1
                 else:
-                    # Both columns fit, append them together
                     total_line = f"  {col1:<18} {col2}"
                     if len(total_line) <= 37:
                         lines.append(total_line)
                         i += 2
                     else:
-                        # Line too long, append first column alone
                         lines.append(f"  {col1}")
                         i += 1
             else:
-                # Only one unit left, append it
                 lines.append(f"  {col1}")
                 i += 1
         
-        lines.append("")  # Empty line between categories
+        if category == 'currency' and not search:
+            lines.append("  Use currencies() to see more.")
+        
+        lines.append("")
     
     return lines
 
@@ -747,6 +756,7 @@ def units(search=""):
         search (str): Optional search term to filter units. If empty, shows all units.
                      Matches against both unit abbreviations and full names (case-insensitive).
     """
+    _ensure_currency_data_loaded()
     lines = _generate_units_lines(search)
     _print_buffered(lines)
 
@@ -807,9 +817,20 @@ import keyword
 import re
 
 def _escape_keywords(unit_str):
-    """Escape Python keywords in a unit string for parsing."""
+    """Escape Python keywords and special characters in a unit string for parsing."""
     escaped_str = unit_str
     escaped_keywords = {}
+    
+    # Escape $ (currency prefix) - replace $xxx with _dollar_xxx
+    dollar_pattern = r'\$([a-zA-Z]+)'
+    for match in re.finditer(dollar_pattern, escaped_str):
+        original = match.group(0)  # e.g., $USD
+        code = match.group(1)  # e.g., USD
+        replacement = f'_dollar_{code}'
+        escaped_keywords[replacement] = original
+    escaped_str = re.sub(dollar_pattern, r'_dollar_\1', escaped_str)
+    
+    # Escape Python keywords
     for kw in keyword.kwlist:
         pattern = r'\b' + kw + r'\b'
         if re.search(pattern, escaped_str):
@@ -819,7 +840,7 @@ def _escape_keywords(unit_str):
     return escaped_str, escaped_keywords
 
 def _unescape_keywords(text, escaped_keywords):
-    """Restore escaped keywords back to their original form."""
+    """Restore escaped keywords and special characters back to their original form."""
     for replacement, original in escaped_keywords.items():
         text = text.replace(replacement, original)
     return text
@@ -1129,6 +1150,9 @@ def convert(from_unit="", to_unit="", value=0):
         _print_buffered(all_lines)
         return None
     
+    # Lazy-load currency data for currency conversions
+    _ensure_currency_data_loaded()
+    
     if from_unit.lower() == to_unit.lower():
         return value
     
@@ -1243,6 +1267,104 @@ def human(number):
 at = asciitable
 il = inputlist
 avg = average
+
+# Flag to track if currency data has been loaded
+_CURRENCY_DATA_LOADED = False
+
+def _ensure_currency_data_loaded():
+    """Lazy-load currency data on first use."""
+    global _CURRENCY_DATA_LOADED
+    if _CURRENCY_DATA_LOADED:
+        return
+    _CURRENCY_DATA_LOADED = True
+    _load_currency_data()
+
+def _load_currency_data():
+    """Decode and load currency exchange rates into the conversion matrix and unit names."""
+    try:
+        import json
+        # Decode base64 and decompress gzip
+        compressed = base64.b64decode(_CURRENCY_DATA)
+        json_bytes = gzip.decompress(compressed)
+        data = json.loads(json_bytes.decode('utf-8'))
+        
+        records = data.get('data', [])
+        
+        # Track seen codes for conversion matrix (only add once per code)
+        seen_codes = set()
+        
+        # Add each currency to the conversion matrix and unit names
+        # Currency codes are prefixed with "$" to avoid conflicts (e.g., $CAD, $CUP)
+        for record in records:
+            currency_code = record.get('currency_code')
+            exchange_rate = record.get('exchange_rate')
+            country = record.get('country') or ''
+            currency = record.get('currency') or ''
+            
+            if currency_code:
+                code_lower = currency_code.lower()
+                prefixed_code = f"${code_lower}"
+                
+                # Store country-specific entry for display/search: $eur_germany -> "Germany (Euro)"
+                country_key = country.lower().replace(' ', '_').replace('-', '_')
+                display_key = f"{prefixed_code}_{country_key}"
+                _UNIT_NAMES[display_key] = f"{country} ({currency})"
+                
+                # Add to conversion matrix only once per code
+                if code_lower not in seen_codes:
+                    seen_codes.add(code_lower)
+                    
+                    # Also store the base code for conversion lookups
+                    _UNIT_NAMES[prefixed_code] = f"{country} ({currency})"
+                    
+                    if exchange_rate and currency_code.upper() != 'USD':
+                        try:
+                            rate = float(exchange_rate)
+                            # USD to foreign currency: 1 USD = rate foreign
+                            _CONVERSION_MATRIX[('currency.$usd', f'currency.{prefixed_code}')] = rate
+                        except (ValueError, TypeError):
+                            pass
+        
+        # Make sure USD is in unit names
+        _UNIT_NAMES['$usd'] = 'United States (Dollar)'
+        _UNIT_NAMES['$usd_united_states'] = 'United States (Dollar)'
+            
+    except Exception:
+        # Silently ignore errors loading currency data
+        pass
+
+def currencies(search=""):
+    """
+    Print available currencies. Convenience function that shows only currency units.
+    
+    Args:
+        search (str): Optional search term to filter currencies.
+    """
+    _ensure_currency_data_loaded()
+    
+    lines = ["", "CURRENCIES:"]
+    
+    # Get all currency entries from _UNIT_NAMES (keys with $code_country pattern)
+    entries = []  # List of (code, full_name) tuples
+    for unit_key, full_name in _UNIT_NAMES.items():
+        if unit_key.startswith('$') and '_' in unit_key:
+            base_code = unit_key.split('_')[0]  # $eur
+            if search:
+                if _matches_search(unit_key, full_name, search):
+                    entries.append((base_code, full_name))
+            else:
+                entries.append((base_code, full_name))
+    
+    if not entries:
+        lines.append("  No matching currencies found.")
+    else:
+        entries.sort(key=lambda x: x[1])  # Sort by full_name (country)
+        for code, full_name in entries:
+            display_code = code.upper()
+            lines.append(f"  {display_code:<5} {full_name}")
+    
+    lines.append("")
+    _print_buffered(lines)
 
 # Define constants for data sizes
 kb = 1024
