@@ -1427,16 +1427,16 @@ class TestPycoUnitNames(unittest.TestCase):
         self.assertIn("feet", output)
         
         # Verify the output stays within width limit (each line should be <= 37 chars)
-        # Currency lines can be longer due to country names
+        # Currency and timezone lines can be longer due to country/timezone names
         lines = output.split('\n')
-        in_currency_section = False
+        in_long_section = False
         for line in lines:
-            if 'CURRENCY' in line:
-                in_currency_section = True
+            if 'CURRENCY' in line or 'TIMEZONE' in line:
+                in_long_section = True
             elif line.strip() and line[0].isupper() and ':' in line:
-                in_currency_section = False
+                in_long_section = False
             
-            if line.strip() and not line.startswith('=') and not in_currency_section:
+            if line.strip() and not line.startswith('=') and not in_long_section:
                 self.assertLessEqual(len(line), 37, f"Line too long: '{line}' ({len(line)} chars)")
     
     def test_temperature_units_handling(self):
@@ -2228,6 +2228,217 @@ class TestPycoNestedUnitConversions(unittest.TestCase):
         expected = 1 * 0.3048 * 2.54 * 0.453592
         result = pyco.convert('ft*in*lb', 'm*cm*kg', 1)
         self.assertAlmostEqual(result, expected, places=6)
+
+
+class TestPycoTimezoneConversions(unittest.TestCase):
+    """Test timezone conversion functionality in pyco.py"""
+    
+    def test_convert_pst_to_china_cst(self):
+        """Test PST to China CST conversion (the main example)"""
+        # PST is UTC-8, China CST is UTC+8, difference is 16 hours
+        result = pyco.convert('PST', 'China CST', 14)
+        self.assertEqual(result, 30)
+    
+    def test_convert_est_to_gmt(self):
+        """Test EST to GMT conversion"""
+        # EST is UTC-5, GMT is UTC+0, difference is 5 hours
+        result = pyco.convert('EST', 'GMT', 12)
+        self.assertEqual(result, 17)
+    
+    def test_convert_jst_to_pst(self):
+        """Test JST to PST conversion"""
+        # JST is UTC+9, PST is UTC-8, difference is -17 hours
+        result = pyco.convert('JST', 'PST', 9)
+        self.assertEqual(result, -8)
+    
+    def test_convert_utc_to_indian_ist(self):
+        """Test UTC to Indian IST conversion with fractional offset"""
+        # UTC is 0, Indian IST is UTC+5.5, difference is 5.5 hours
+        result = pyco.convert('UTC', 'Indian IST', 0)
+        self.assertEqual(result, 5.5)
+    
+    def test_convert_cuba_cst_to_china_cst(self):
+        """Test disambiguation - Cuba CST to China CST"""
+        # Cuba CST is UTC-5, China CST is UTC+8, difference is 13 hours
+        result = pyco.convert('Cuba CST', 'China CST', 10)
+        self.assertEqual(result, 23)
+    
+    def test_convert_same_timezone(self):
+        """Test converting timezone to itself"""
+        result = pyco.convert('PST', 'PST', 10)
+        self.assertEqual(result, 10)
+    
+    def test_convert_timezone_case_insensitive(self):
+        """Test that timezone conversion is case insensitive"""
+        result1 = pyco.convert('pst', 'gmt', 10)
+        result2 = pyco.convert('PST', 'GMT', 10)
+        result3 = pyco.convert('Pst', 'Gmt', 10)
+        self.assertEqual(result1, result2)
+        self.assertEqual(result2, result3)
+    
+    def test_convert_timezone_with_spaces(self):
+        """Test that timezone input handles spaces correctly"""
+        # 'China CST' should normalize to 'china_cst'
+        result = pyco.convert('china cst', 'pst', 8)
+        self.assertEqual(result, -8)
+    
+    def test_convert_timezone_to_non_timezone_error(self):
+        """Test that mixing timezone with non-timezone shows error with suggestions"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('PST', 'km', 14)
+        self.assertIsNone(result)
+        self.assertIn("Could not convert the timezone", captured_output.getvalue())
+        self.assertIn("Did you mean", captured_output.getvalue())
+    
+    def test_convert_non_timezone_to_timezone_error(self):
+        """Test that mixing non-timezone with timezone shows error with suggestions"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = pyco.convert('km', 'PST', 14)
+        self.assertIsNone(result)
+        self.assertIn("Could not convert the timezone", captured_output.getvalue())
+        self.assertIn("Did you mean", captured_output.getvalue())
+    
+    def test_timezone_data_structure(self):
+        """Test that timezone data is properly structured"""
+        self.assertIn('pst', pyco._TIMEZONE_DATA)
+        self.assertIn('china_cst', pyco._TIMEZONE_DATA)
+        self.assertIn('gmt', pyco._TIMEZONE_DATA)
+        
+        # Each entry should be (name, offset) tuple
+        pst_data = pyco._TIMEZONE_DATA['pst']
+        self.assertEqual(len(pst_data), 2)
+        self.assertIsInstance(pst_data[0], str)  # Name
+        self.assertIsInstance(pst_data[1], (int, float))  # Offset
+    
+    def test_is_timezone(self):
+        """Test _is_timezone helper function"""
+        self.assertTrue(pyco._is_timezone('PST'))
+        self.assertTrue(pyco._is_timezone('pst'))
+        self.assertTrue(pyco._is_timezone('China CST'))
+        self.assertTrue(pyco._is_timezone('china_cst'))
+        self.assertFalse(pyco._is_timezone('km'))
+        self.assertFalse(pyco._is_timezone('notarealtz'))
+    
+    def test_get_timezone_offset(self):
+        """Test _get_timezone_offset helper function"""
+        self.assertEqual(pyco._get_timezone_offset('PST'), -8)
+        self.assertEqual(pyco._get_timezone_offset('China CST'), 8)
+        self.assertEqual(pyco._get_timezone_offset('Indian IST'), 5.5)
+        self.assertEqual(pyco._get_timezone_offset('Central CST'), -6)
+        self.assertIsNone(pyco._get_timezone_offset('notarealtz'))
+    
+    def test_normalize_timezone_input(self):
+        """Test _normalize_timezone_input helper function"""
+        self.assertEqual(pyco._normalize_timezone_input('China CST'), 'china_cst')
+        self.assertEqual(pyco._normalize_timezone_input('PST'), 'pst')
+        self.assertEqual(pyco._normalize_timezone_input('china-cst'), 'china_cst')
+    
+    def test_get_timezone_display(self):
+        """Test _get_timezone_display returns just the abbreviation for clean UI"""
+        self.assertEqual(pyco._get_timezone_display('china_cst'), 'CST')
+        self.assertEqual(pyco._get_timezone_display('pst'), 'PST')
+        self.assertEqual(pyco._get_timezone_display('bangladesh_bst'), 'BST')
+    
+    def test_get_timezone_input_format(self):
+        """Test _get_timezone_input_format returns full user input format"""
+        self.assertEqual(pyco._get_timezone_input_format('china_cst'), 'China CST')
+        self.assertEqual(pyco._get_timezone_input_format('pst'), 'PST')
+        self.assertEqual(pyco._get_timezone_input_format('bangladesh_bst'), 'Bangladesh BST')
+        self.assertEqual(pyco._get_timezone_input_format('indian_ist'), 'Indian IST')
+    
+    def test_format_utc_offset(self):
+        """Test _format_utc_offset helper function"""
+        self.assertEqual(pyco._format_utc_offset(0), 'UTC+0')
+        self.assertEqual(pyco._format_utc_offset(8), 'UTC+8')
+        self.assertEqual(pyco._format_utc_offset(-8), 'UTC-8')
+        self.assertEqual(pyco._format_utc_offset(5.5), 'UTC+05:30')
+        self.assertEqual(pyco._format_utc_offset(-3.5), 'UTC-03:30')
+
+
+class TestPycoTimezonesFunction(unittest.TestCase):
+    """Test timezones() function in pyco.py"""
+    
+    def test_timezones_function_exists(self):
+        """Test that timezones function exists"""
+        self.assertTrue(hasattr(pyco, 'timezones'))
+        self.assertTrue(callable(pyco.timezones))
+    
+    def test_timezones_no_search(self):
+        """Test timezones() lists all timezones"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.timezones()
+        
+        output = captured_output.getvalue()
+        self.assertIn('TIMEZONES:', output)
+        self.assertIn('PST', output)
+        self.assertIn('GMT', output)
+        self.assertIn('China Standard Time', output)
+    
+    def test_timezones_search(self):
+        """Test timezones() with search parameter"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.timezones('china')
+        
+        output = captured_output.getvalue()
+        self.assertIn('CST', output)  # Abbreviation in left column
+        self.assertIn('China Standard Time', output)  # Full name on right
+    
+    def test_timezones_search_no_match(self):
+        """Test timezones() with search that matches nothing"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.timezones('xyznotreal')
+        
+        output = captured_output.getvalue()
+        self.assertIn('No matching timezones found', output)
+    
+    def test_units_includes_timezone_section(self):
+        """Test that units() includes timezone section"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units()
+        
+        output = captured_output.getvalue()
+        self.assertIn('TIMEZONE:', output)
+        self.assertIn('Use timezones() to see more', output)
+    
+    def test_units_shows_top_timezones(self):
+        """Test that units() shows top timezones when not searching"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units()
+        
+        output = captured_output.getvalue()
+        # Check for some top timezones
+        self.assertIn('PST', output)
+        self.assertIn('EST', output)
+        self.assertIn('GMT', output)
+        self.assertIn('UTC', output)
+    
+    def test_units_search_finds_timezones(self):
+        """Test that units() search finds timezones"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units('pacific')
+        
+        output = captured_output.getvalue()
+        self.assertIn('TIMEZONE:', output)
+        self.assertIn('PST', output)
+        self.assertIn('Pacific', output)
+    
+    def test_units_search_china_finds_timezone(self):
+        """Test that units('china') finds China CST timezone"""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units('china')
+        
+        output = captured_output.getvalue()
+        self.assertIn('China Standard Time', output)  # Full name shows China
+
 
 if __name__ == '__main__':
     # Create a test suite

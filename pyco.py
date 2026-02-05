@@ -632,6 +632,145 @@ _UNIT_NAMES = {
     'hp': 'horsepower',
 }
 
+# Timezone data: key -> (full_name, UTC offset in hours)
+# Keys use underscores for multi-word names (e.g., 'china_cst')
+# Ambiguous abbreviations are disambiguated with a prefix (e.g., 'china_cst' vs 'cuba_cst')
+# All ambiguous codes require disambiguation - there are no "default" versions
+_TIMEZONE_DATA = {
+    # North America (unambiguous)
+    'pst': ('Pacific Standard Time', -8),
+    'pdt': ('Pacific Daylight Time', -7),
+    'mst': ('Mountain Standard Time', -7),
+    'mdt': ('Mountain Daylight Time', -6),
+    'cdt': ('Central Daylight Time', -5),
+    'est': ('Eastern Standard Time', -5),
+    'edt': ('Eastern Daylight Time', -4),
+    'akst': ('Alaska Standard Time', -9),
+    'akdt': ('Alaska Daylight Time', -8),
+    'hst': ('Hawaii Standard Time', -10),
+    
+    # CST variants (all disambiguated)
+    'central_cst': ('Central Standard Time', -6),
+    'china_cst': ('China Standard Time', 8),
+    'cuba_cst': ('Cuba Standard Time', -5),
+    
+    # Europe (unambiguous)
+    'gmt': ('Greenwich Mean Time', 0),
+    'utc': ('Coordinated Universal Time', 0),
+    'wet': ('Western European Time', 0),
+    'west': ('Western European Summer Time', 1),
+    'cet': ('Central European Time', 1),
+    'cest': ('Central European Summer Time', 2),
+    'eet': ('Eastern European Time', 2),
+    'eest': ('Eastern European Summer Time', 3),
+    'msk': ('Moscow Time', 3),
+    
+    # BST variants (all disambiguated)
+    'british_bst': ('British Summer Time', 1),
+    'bangladesh_bst': ('Bangladesh Standard Time', 6),
+    
+    # IST variants (all disambiguated)
+    'indian_ist': ('Indian Standard Time', 5.5),
+    'irish_ist': ('Irish Standard Time', 1),
+    'israel_ist': ('Israel Standard Time', 2),
+    
+    # Asia/Pacific (unambiguous)
+    'jst': ('Japan Standard Time', 9),
+    'kst': ('Korea Standard Time', 9),
+    'hkt': ('Hong Kong Time', 8),
+    'sgt': ('Singapore Time', 8),
+    'pht': ('Philippine Time', 8),
+    'wib': ('Western Indonesian Time', 7),
+    'wita': ('Central Indonesian Time', 8),
+    'wit': ('Eastern Indonesian Time', 9),
+    'ict': ('Indochina Time', 7),
+    'npt': ('Nepal Time', 5.75),
+    'pkt': ('Pakistan Standard Time', 5),
+    
+    # Australia/NZ (unambiguous)
+    'aest': ('Australian Eastern Standard Time', 10),
+    'aedt': ('Australian Eastern Daylight Time', 11),
+    'acst': ('Australian Central Standard Time', 9.5),
+    'acdt': ('Australian Central Daylight Time', 10.5),
+    'awst': ('Australian Western Standard Time', 8),
+    'nzst': ('New Zealand Standard Time', 12),
+    'nzdt': ('New Zealand Daylight Time', 13),
+    
+    # Other (unambiguous)
+    'ast': ('Atlantic Standard Time', -4),
+    'adt': ('Atlantic Daylight Time', -3),
+    'nst': ('Newfoundland Standard Time', -3.5),
+    'ndt': ('Newfoundland Daylight Time', -2.5),
+    'art': ('Argentina Time', -3),
+    'brt': ('Brasilia Time', -3),
+    'cat': ('Central Africa Time', 2),
+    'eat': ('East Africa Time', 3),
+    'wat': ('West Africa Time', 1),
+    'sast': ('South African Standard Time', 2),
+    'gulf_gst': ('Gulf Standard Time', 4),
+    'aft': ('Afghanistan Time', 4.5),
+    'irst': ('Iran Standard Time', 3.5),
+    'irdt': ('Iran Daylight Time', 4.5),
+    'akt': ('Arabia Standard Time', 3),
+    'uzt': ('Uzbekistan Time', 5),
+    'get': ('Georgia Standard Time', 4),
+    'amt': ('Armenia Time', 4),
+    'azt': ('Azerbaijan Time', 4),
+    'fjt': ('Fiji Time', 12),
+    'tot': ('Tonga Time', 13),
+    'sst': ('Samoa Standard Time', -11),
+    'chst': ('Chamorro Standard Time', 10),
+    'wst': ('Western Standard Time', 8),
+}
+
+# Top timezones to show in units() when not searching (common world clock cities)
+# NYC, LA, London, Paris, Dubai, Mumbai, Hong Kong, Tokyo, Sydney
+_TOP_TIMEZONES = ['est', 'pst', 'gmt', 'cet', 'gulf_gst', 'indian_ist', 'hkt', 'jst', 'aest']
+
+def _normalize_timezone_input(unit_str):
+    """Convert user input like 'China CST' to internal key 'china_cst'."""
+    return unit_str.lower().replace(' ', '_').replace('-', '_')
+
+def _get_timezone_display(tz_key):
+    """Get display format for a timezone key. Shows just the abbreviation (e.g., 'china_cst' -> 'CST')."""
+    if '_' in tz_key:
+        # Just show the abbreviation part for clean UI
+        abbrev = tz_key.split('_')[-1].upper()
+        return abbrev
+    return tz_key.upper()
+
+def _get_timezone_input_format(tz_key):
+    """Get the user input format for a timezone key. E.g., 'china_cst' -> 'China CST'."""
+    if '_' in tz_key:
+        parts = tz_key.split('_')
+        # Last part is the abbreviation (uppercase), rest is qualifier (title case)
+        qualifier = ' '.join(p.title() for p in parts[:-1])
+        abbrev = parts[-1].upper()
+        return f"{qualifier} {abbrev}"
+    return tz_key.upper()
+
+def _format_utc_offset(offset):
+    """Format a UTC offset as a string like 'UTC+05:30' or 'UTC-08:00'."""
+    sign = '+' if offset >= 0 else '-'
+    abs_offset = abs(offset)
+    hours = int(abs_offset)
+    minutes = int((abs_offset - hours) * 60)
+    if minutes:
+        return f"UTC{sign}{hours:02d}:{minutes:02d}"
+    return f"UTC{sign}{hours}"
+
+def _is_timezone(unit_str):
+    """Check if a unit string refers to a timezone."""
+    normalized = _normalize_timezone_input(unit_str)
+    return normalized in _TIMEZONE_DATA
+
+def _get_timezone_offset(unit_str):
+    """Get the UTC offset for a timezone. Returns None if not a timezone."""
+    normalized = _normalize_timezone_input(unit_str)
+    if normalized in _TIMEZONE_DATA:
+        return _TIMEZONE_DATA[normalized][1]
+    return None
+
 def _matches_search(unit_abbrev, unit_full_name, search_term):
     """Check if unit matches search term using fuzzy string matching for typos."""
     if not search_term:
@@ -664,27 +803,33 @@ def _matches_search(unit_abbrev, unit_full_name, search_term):
 # Top currencies to show in units() when not searching
 _TOP_CURRENCIES = ['$usd', '$eur', '$gbp', '$jpy', '$cad', '$aud', '$chf', '$cny']
 
-def _generate_units_lines(search=""):
+def _generate_units_lines(search="", categories=None):
     """
     Generate lines for units display with optional search filtering.
     
     Args:
         search (str): Optional search term to filter units.
+        categories (list): Optional list of categories to include. If None, includes all.
         
     Returns:
         list: Array of strings representing the units display
     """
     lines = [""]
     
-    # Get all categories
-    categories = _get_all_categories()
-    categories.sort()  # Sort alphabetically
+    # Get all categories plus timezone
+    if categories is None:
+        categories = _get_all_categories()
+        if 'timezone' not in categories:
+            categories.append('timezone')
+        categories.sort()  # Sort alphabetically
     
     for category in categories:
         # Get all units for this category
         if category == 'currency':
             # Country-specific entries for searching: $eur_germany, $usd_united_states, etc.
             all_units = [k for k in _UNIT_NAMES.keys() if k.startswith('$') and '_' in k]
+        elif category == 'timezone':
+            all_units = list(_TIMEZONE_DATA.keys())
         else:
             all_units = _get_units_by_category(category)
         
@@ -692,13 +837,23 @@ def _generate_units_lines(search=""):
         if search:
             units = []
             for unit in all_units:
-                full_name = _UNIT_NAMES.get(unit, unit)
-                if _matches_search(unit, full_name, search):
-                    units.append(unit)
+                if category == 'timezone':
+                    tz_name, tz_offset = _TIMEZONE_DATA[unit]
+                    input_format = _get_timezone_input_format(unit)
+                    full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
+                    if _matches_search(input_format, full_name, search):
+                        units.append(unit)
+                else:
+                    full_name = _UNIT_NAMES.get(unit, unit)
+                    if _matches_search(unit, full_name, search):
+                        units.append(unit)
         else:
             if category == 'currency':
                 # Show only top currencies (base codes) when not searching
                 units = [c for c in _TOP_CURRENCIES if c in _UNIT_NAMES]
+            elif category == 'timezone':
+                # Show only top timezones when not searching
+                units = [tz for tz in _TOP_TIMEZONES if tz in _TIMEZONE_DATA]
             else:
                 units = all_units
         
@@ -713,8 +868,16 @@ def _generate_units_lines(search=""):
         i = 0
         while i < len(units):
             unit1 = units[i]
-            full_name1 = _UNIT_NAMES.get(unit1, unit1)
-            display_unit1 = unit1.split('_')[0].upper() if category == 'currency' and '_' in unit1 else (unit1.upper() if category == 'currency' else unit1)
+            if category == 'timezone':
+                tz_name1, tz_offset1 = _TIMEZONE_DATA[unit1]
+                display_unit1 = _get_timezone_display(unit1)
+                full_name1 = f"{tz_name1} ({_format_utc_offset(tz_offset1)})"
+            elif category == 'currency':
+                full_name1 = _UNIT_NAMES.get(unit1, unit1)
+                display_unit1 = unit1.split('_')[0].upper() if '_' in unit1 else unit1.upper()
+            else:
+                full_name1 = _UNIT_NAMES.get(unit1, unit1)
+                display_unit1 = unit1
             col1 = f"{display_unit1:<5} {full_name1}"
             
             if len(col1) > 18:
@@ -722,8 +885,16 @@ def _generate_units_lines(search=""):
                 i += 1
             elif i + 1 < len(units):
                 unit2 = units[i + 1]
-                full_name2 = _UNIT_NAMES.get(unit2, unit2)
-                display_unit2 = unit2.split('_')[0].upper() if category == 'currency' and '_' in unit2 else (unit2.upper() if category == 'currency' else unit2)
+                if category == 'timezone':
+                    tz_name2, tz_offset2 = _TIMEZONE_DATA[unit2]
+                    display_unit2 = _get_timezone_display(unit2)
+                    full_name2 = f"{tz_name2} ({_format_utc_offset(tz_offset2)})"
+                elif category == 'currency':
+                    full_name2 = _UNIT_NAMES.get(unit2, unit2)
+                    display_unit2 = unit2.split('_')[0].upper() if '_' in unit2 else unit2.upper()
+                else:
+                    full_name2 = _UNIT_NAMES.get(unit2, unit2)
+                    display_unit2 = unit2
                 col2 = f"{display_unit2:<5} {full_name2}"
                 
                 if len(col2) > 18:
@@ -743,6 +914,9 @@ def _generate_units_lines(search=""):
         
         if category == 'currency' and not search:
             lines.append("  Use currencies() to see more.")
+        
+        if category == 'timezone' and not search:
+            lines.append("  Use timezones() to see more.")
         
         lines.append("")
     
@@ -1156,6 +1330,34 @@ def convert(from_unit="", to_unit="", value=0):
     if from_unit.lower() == to_unit.lower():
         return value
     
+    # Handle timezone conversions (additive offset, not multiplicative)
+    from_is_tz = _is_timezone(from_unit)
+    to_is_tz = _is_timezone(to_unit)
+    
+    if from_is_tz or to_is_tz:
+        if not from_is_tz:
+            # Check if from_unit looks like a timezone attempt - suggest close matches
+            error_lines = [f"Could not convert the timezone '{from_unit}'. Did you mean one of the following?"]
+            units_lines = _generate_units_lines(from_unit, categories=['timezone'])
+            all_lines = error_lines + units_lines
+            _print_buffered(all_lines)
+            return None
+        if not to_is_tz:
+            # Check if to_unit looks like a timezone attempt - suggest close matches
+            error_lines = [f"Could not convert the timezone '{to_unit}'. Did you mean one of the following?"]
+            units_lines = _generate_units_lines(to_unit, categories=['timezone'])
+            all_lines = error_lines + units_lines
+            _print_buffered(all_lines)
+            return None
+        
+        from_offset = _get_timezone_offset(from_unit)
+        to_offset = _get_timezone_offset(to_unit)
+        
+        # Timezone conversion: add the difference in offsets
+        # If PST (-8) to China CST (+8), difference is +16
+        offset_diff = to_offset - from_offset
+        return value + offset_diff
+    
     # Check if we're dealing with combined units (expressions with * or /)
     from_is_combined = _is_combined_unit(from_unit)
     to_is_combined = _is_combined_unit(to_unit)
@@ -1362,6 +1564,36 @@ def currencies(search=""):
         for code, full_name in entries:
             display_code = code.upper()
             lines.append(f"  {display_code:<5} {full_name}")
+    
+    lines.append("")
+    _print_buffered(lines)
+
+def timezones(search=""):
+    """
+    Print available timezones. Convenience function that shows all timezone units.
+    
+    Args:
+        search (str): Optional search term to filter timezones.
+    """
+    lines = ["", "TIMEZONES:"]
+    
+    entries = []  # List of (display, full_name) tuples
+    for tz_key, (tz_name, tz_offset) in _TIMEZONE_DATA.items():
+        display = _get_timezone_display(tz_key)
+        input_format = _get_timezone_input_format(tz_key)
+        full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
+        if search:
+            if _matches_search(input_format, full_name, search):
+                entries.append((display, full_name))
+        else:
+            entries.append((display, full_name))
+    
+    if not entries:
+        lines.append("  No matching timezones found.")
+    else:
+        entries.sort(key=lambda x: x[1])  # Sort by full name
+        for display, full_name in entries:
+            lines.append(f"  {display:<6} {full_name}")
     
     lines.append("")
     _print_buffered(lines)
