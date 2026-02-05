@@ -1202,6 +1202,102 @@ class TestPycoDisplayHook(unittest.TestCase):
             pyco._displayhook(test_lambda)
             # Should call the lambda and pass result to original displayhook
             mock_displayhook.assert_called_once_with(42)
+    
+    def test_displayhook_stores_list_in_list_variable(self):
+        """Test displayhook stores list results in _list"""
+        test_list = [1, 2, 3, 4, 5]
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_list)
+            self.assertEqual(pyco._list, [1, 2, 3, 4, 5])
+    
+    def test_displayhook_stores_tuple_in_list_variable(self):
+        """Test displayhook stores tuple results in _list"""
+        test_tuple = (10, 20, 30)
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_tuple)
+            self.assertEqual(pyco._list, [10, 20, 30])
+    
+    def test_displayhook_stores_range_in_list_variable(self):
+        """Test displayhook stores range results in _list"""
+        test_range = range(5)
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_range)
+            self.assertEqual(pyco._list, [0, 1, 2, 3, 4])
+    
+    def test_displayhook_stores_set_in_list_variable(self):
+        """Test displayhook stores set results in _list"""
+        test_set = {3, 1, 2}
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_set)
+            # Set order may vary, so just check contents
+            self.assertEqual(set(pyco._list), {1, 2, 3})
+    
+    def test_displayhook_does_not_store_string_in_list_variable(self):
+        """Test displayhook does NOT store string results in _list (strings are iterable but excluded)"""
+        pyco._list = []  # Reset
+        test_string = "hello"
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_string)
+            # _list should remain empty - strings are excluded
+            self.assertEqual(pyco._list, [])
+    
+    def test_displayhook_does_not_store_int_in_list_variable(self):
+        """Test displayhook does NOT store non-enumerable results in _list"""
+        pyco._list = [1, 2, 3]  # Set previous value
+        test_int = 42
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook(test_int)
+            # _list should remain unchanged
+            self.assertEqual(pyco._list, [1, 2, 3])
+    
+    def test_displayhook_overwrites_previous_list(self):
+        """Test displayhook overwrites previous _list value"""
+        pyco._list = [100, 200]
+        
+        with patch('sys.__displayhook__'):
+            pyco._displayhook([1, 2])
+            self.assertEqual(pyco._list, [1, 2])
+
+
+class TestIsEnumerable(unittest.TestCase):
+    """Test the _is_enumerable helper function"""
+    
+    def test_list_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable([1, 2, 3]))
+    
+    def test_tuple_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable((1, 2, 3)))
+    
+    def test_set_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable({1, 2, 3}))
+    
+    def test_range_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable(range(10)))
+    
+    def test_dict_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable({'a': 1, 'b': 2}))
+    
+    def test_generator_is_enumerable(self):
+        self.assertTrue(pyco._is_enumerable(x for x in range(5)))
+    
+    def test_string_is_not_enumerable(self):
+        """Strings are iterable but should be excluded"""
+        self.assertFalse(pyco._is_enumerable("hello"))
+    
+    def test_int_is_not_enumerable(self):
+        self.assertFalse(pyco._is_enumerable(42))
+    
+    def test_float_is_not_enumerable(self):
+        self.assertFalse(pyco._is_enumerable(3.14))
+    
+    def test_none_is_not_enumerable(self):
+        self.assertFalse(pyco._is_enumerable(None))
 
 class TestPycoExceptionHandlerCoverage(unittest.TestCase):
     """Test exception handler code coverage"""
@@ -1795,7 +1891,7 @@ class TestPycoUnitsSearch(unittest.TestCase):
     def test_units_partial_match(self):
         """Test partial string matching"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('meter')
         
         output = captured_output.getvalue()

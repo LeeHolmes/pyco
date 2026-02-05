@@ -10,14 +10,32 @@ import base64
 from math import *
 from random import *
 
+# Special variable to store the last enumerable result
+_list = []
+_ = None
+
+def _is_enumerable(value):
+    """Check if a value is enumerable (list, tuple, set, range, etc.) but not a string."""
+    if isinstance(value, str):
+        return False
+    try:
+        iter(value)
+        return True
+    except TypeError:
+        return False
+
 if sys.implementation.name == 'cpython':
     import statistics
     from statistics import *
 
     def _displayhook(value):
+        global _list
         if callable(value):
             _displayhook(value())
         else:
+            # Store enumerable results in _list
+            if _is_enumerable(value):
+                _list = list(value)
             sys.__displayhook__(value)
     sys.displayhook = _displayhook
 
@@ -327,7 +345,7 @@ def _print_buffered(lines):
         lines (list): Array of strings to print
     """
     for i, line in enumerate(lines):
-        if i > 0 and i % 18 == 0:
+        if i > 0 and i % 19 == 0:
             try:
                 input("Press ENTER to continue...")
             except (EOFError, OSError):
@@ -340,7 +358,7 @@ def asciitable():
     lines = []
     
     for i in range(0, 255, 4):
-        if i % 68 == 0:
+        if i % 72 == 0:
             lines.append("Dec Hx C | Dec Hx C | Dec Hx C | Dec Hx C")
         lines.append("{:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {} | {:3d} {:02X} {}".format(
             i, i, _get_printable_char(i),
