@@ -163,22 +163,6 @@ def _matches_term(name, obj, term):
         return True
     return False
 
-def _getNumberedResults(unused=''):
-    """Get all numbered result variables (_1, _2, _3, etc.) and their values.
-    
-    Returns a list of [varName, command, repr(value)] triples.
-    e.g. [["_1", "2+2", "4"], ["_2", "x", "5"]]
-    Only returns results up to _result_counter (actual results, not pre-initialized None values).
-    """
-    results = []
-    for i in range(1, _result_counter + 1):
-        var_name = f'_{i}'
-        if var_name in globals():
-            value = globals()[var_name]
-            command = _history.get(i, '')
-            results.append([var_name, command, repr(value)])
-    return results
-
 def history():
     """Display calculation history.
     
