@@ -17,6 +17,9 @@ _ = None
 # Counter for numbered result history (_1, _2, _3, etc.)
 _result_counter = 0
 
+# Dictionary mapping result number to command text: {1: "2+2", 2: "x*3", ...}
+_history = {}
+
 # Initialize _1 through _100 with None
 for _i in range(1, 101):
     globals()[f'_{_i}'] = None
@@ -32,15 +35,27 @@ def _is_enumerable(value):
     except TypeError:
         return False
 
+# Pending command text set by REPL before execution
+_pending_command = ''
+
+def _pre_exec_hook(source):
+    """Hook called by hosts before executing a command.
+    Stores the source code so it can be associated with the result."""
+    global _pending_command
+    _pending_command = source
+
 def _process_result(value):
     """Common logic for processing REPL results (used by both CPython and MicroPython)"""
-    global _list, _result_counter
+    global _list, _result_counter, _pending_command
     # Store enumerable results in _list
     if _is_enumerable(value):
         _list = list(value)
     # Store result in numbered variable (_1, _2, _3, etc.)
     _result_counter += 1
     globals()[f'_{_result_counter}'] = value
+    # Store command text in _history dictionary
+    _history[_result_counter] = _pending_command
+    _pending_command = ''  # Clear after use
 
 if sys.implementation.name == 'cpython':
     import statistics
@@ -151,7 +166,8 @@ def _matches_term(name, obj, term):
 def _getNumberedResults(unused=''):
     """Get all numbered result variables (_1, _2, _3, etc.) and their values.
     
-    Returns a list of [varName, repr(value)] pairs, e.g. [["_1", "25"], ["_2", "1.0"]]
+    Returns a list of [varName, command, repr(value)] triples.
+    e.g. [["_1", "2+2", "4"], ["_2", "x", "5"]]
     Only returns results up to _result_counter (actual results, not pre-initialized None values).
     """
     results = []
@@ -159,8 +175,21 @@ def _getNumberedResults(unused=''):
         var_name = f'_{i}'
         if var_name in globals():
             value = globals()[var_name]
-            results.append([var_name, repr(value)])
+            command = _history.get(i, '')
+            results.append([var_name, command, repr(value)])
     return results
+
+def history():
+    """Display calculation history.
+    
+    Prints all history entries showing the command and result for each.
+    """
+    for i in range(1, _result_counter + 1):
+        var_name = f'_{i}'
+        command = _history.get(i, '')
+        value = globals().get(var_name, None)
+        print(f"{var_name}: {command}")
+        print(f"    = {repr(value)}")
 
 def _findGlobals(term):
     """Find all global variables or functions that match the given term pattern.
