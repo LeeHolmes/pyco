@@ -2543,6 +2543,99 @@ class TestPycoTimezonesFunction(unittest.TestCase):
         self.assertIn('China Standard Time', output)  # Full name shows China
 
 
+class TestNumberedResultsHistory(unittest.TestCase):
+    """Test the numbered results history feature (_1, _2, _3, etc.)"""
+    
+    def test_numbered_variables_preinitialized(self):
+        """Test that _1 through _100 are pre-initialized"""
+        for i in range(1, 101):
+            var_name = f'_{i}'
+            self.assertIn(var_name, dir(pyco), f"{var_name} should be pre-initialized")
+    
+    def test_getNumberedResults_empty(self):
+        """Test _getNumberedResults returns empty list when counter is 0"""
+        with patch.object(pyco, '_result_counter', 0):
+            results = pyco._getNumberedResults()
+            self.assertEqual(results, [])
+    
+    def test_getNumberedResults_with_values(self):
+        """Test _getNumberedResults returns stored values"""
+        with patch.object(pyco, '_result_counter', 3), \
+             patch.object(pyco, '_1', 25), \
+             patch.object(pyco, '_2', 3.14159), \
+             patch.object(pyco, '_3', "hello"):
+            
+            results = pyco._getNumberedResults()
+            
+            self.assertEqual(len(results), 3)
+            self.assertEqual(results[0], ['_1', '25'])
+            self.assertEqual(results[1], ['_2', '3.14159'])
+            self.assertEqual(results[2], ['_3', "'hello'"])  # repr() adds quotes for strings
+    
+    def test_getNumberedResults_order(self):
+        """Test _getNumberedResults returns results in order (_1, _2, _3...)"""
+        with patch.object(pyco, '_result_counter', 3), \
+             patch.object(pyco, '_1', 100), \
+             patch.object(pyco, '_2', 200), \
+             patch.object(pyco, '_3', 300):
+            
+            results = pyco._getNumberedResults()
+            
+            self.assertEqual(results[0][0], '_1')
+            self.assertEqual(results[1][0], '_2')
+            self.assertEqual(results[2][0], '_3')
+    
+    def test_getNumberedResults_uses_counter(self):
+        """Test _getNumberedResults uses _result_counter to determine how many results to return"""
+        with patch.object(pyco, '_result_counter', 2), \
+             patch.object(pyco, '_1', 10), \
+             patch.object(pyco, '_2', 20), \
+             patch.object(pyco, '_3', 30), \
+             patch.object(pyco, '_4', 40):
+            
+            results = pyco._getNumberedResults()
+            
+            # Should only return _1 and _2 based on counter
+            self.assertEqual(len(results), 2)
+            self.assertEqual(results[0][0], '_1')
+            self.assertEqual(results[1][0], '_2')
+    
+    def test_getNumberedResults_various_types(self):
+        """Test _getNumberedResults handles various Python types"""
+        with patch.object(pyco, '_result_counter', 7), \
+             patch.object(pyco, '_1', 42), \
+             patch.object(pyco, '_2', 3.14), \
+             patch.object(pyco, '_3', [1, 2, 3]), \
+             patch.object(pyco, '_4', {'a': 1}), \
+             patch.object(pyco, '_5', (1, 2)), \
+             patch.object(pyco, '_6', True), \
+             patch.object(pyco, '_7', None):
+            
+            results = pyco._getNumberedResults()
+            
+            self.assertEqual(len(results), 7)
+            self.assertEqual(results[0], ['_1', '42'])
+            self.assertEqual(results[1], ['_2', '3.14'])
+            self.assertEqual(results[2], ['_3', '[1, 2, 3]'])
+            self.assertEqual(results[3], ['_4', "{'a': 1}"])
+            self.assertEqual(results[4], ['_5', '(1, 2)'])
+            self.assertEqual(results[5], ['_6', 'True'])
+            self.assertEqual(results[6], ['_7', 'None'])
+    
+    def test_getNumberedResults_unused_argument(self):
+        """Test _getNumberedResults accepts but ignores argument (for pyreplCall compatibility)"""
+        with patch.object(pyco, '_result_counter', 1), \
+             patch.object(pyco, '_1', 123):
+            
+            # Should work with any argument
+            results1 = pyco._getNumberedResults('')
+            results2 = pyco._getNumberedResults('ignored')
+            results3 = pyco._getNumberedResults()
+            
+            self.assertEqual(results1, results2)
+            self.assertEqual(results2, results3)
+
+
 if __name__ == '__main__':
     # Create a test suite
     suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])

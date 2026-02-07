@@ -14,6 +14,14 @@ from random import *
 _list = []
 _ = None
 
+# Counter for numbered result history (_1, _2, _3, etc.)
+_result_counter = 0
+
+# Initialize _1 through _100 with None
+for _i in range(1, 101):
+    globals()[f'_{_i}'] = None
+del _i  # Clean up loop variable
+
 def _is_enumerable(value):
     """Check if a value is enumerable (list, tuple, set, range, etc.) but not a string."""
     if isinstance(value, str):
@@ -24,18 +32,25 @@ def _is_enumerable(value):
     except TypeError:
         return False
 
+def _process_result(value):
+    """Common logic for processing REPL results (used by both CPython and MicroPython)"""
+    global _list, _result_counter
+    # Store enumerable results in _list
+    if _is_enumerable(value):
+        _list = list(value)
+    # Store result in numbered variable (_1, _2, _3, etc.)
+    _result_counter += 1
+    globals()[f'_{_result_counter}'] = value
+
 if sys.implementation.name == 'cpython':
     import statistics
     from statistics import *
 
     def _displayhook(value):
-        global _list
         if callable(value):
             _displayhook(value())
         else:
-            # Store enumerable results in _list
-            if _is_enumerable(value):
-                _list = list(value)
+            _process_result(value)
             sys.__displayhook__(value)
     sys.displayhook = _displayhook
 
@@ -61,6 +76,7 @@ elif sys.implementation.name == 'micropython':
         if callable(value):
             _displayhook(value())
         else:
+            _process_result(value)
             __original_repl_print__(value)
     __repl_print__ = _displayhook
 
@@ -131,6 +147,20 @@ def _matches_term(name, obj, term):
     if doc and term_lower in doc.lower():
         return True
     return False
+
+def _getNumberedResults(unused=''):
+    """Get all numbered result variables (_1, _2, _3, etc.) and their values.
+    
+    Returns a list of [varName, repr(value)] pairs, e.g. [["_1", "25"], ["_2", "1.0"]]
+    Only returns results up to _result_counter (actual results, not pre-initialized None values).
+    """
+    results = []
+    for i in range(1, _result_counter + 1):
+        var_name = f'_{i}'
+        if var_name in globals():
+            value = globals()[var_name]
+            results.append([var_name, repr(value)])
+    return results
 
 def _findGlobals(term):
     """Find all global variables or functions that match the given term pattern.
