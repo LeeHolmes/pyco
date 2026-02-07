@@ -106,6 +106,31 @@ If you only realize _after_ doing a calculation that you want to reuse its resul
 
 In this calculation, you mulitiply the per-person cost by 4 again to get back to the original total, and then divide by 5.
 
+### Numbered Results
+
+In addition to the `_` variable which holds just the last result, pyco automatically stores _all_ of your results in numbered variables: `_1`, `_2`, `_3`, and so on. This makes it easy to reference any previous calculation:
+
+```
+>>> 100 + 50
+150
+>>> 200 * 3
+600
+>>> _1 + _2
+750
+```
+
+To see your full calculation history along with the expressions that produced each result, use the `history` function:
+
+```
+>>> history()
+_1: 100 + 50
+    = 150
+_2: 200 * 3
+    = 600
+_3: _1 + _2
+    = 750
+```
+
 
 ### Example
 Your table is splitting the $113 bill (with 20% tip) 5 ways. But one friend is going to pay for 2 people. How much should they pay? There are always many ways to get to the answer, but your session might look something like this:
@@ -248,6 +273,7 @@ You can create your own functions to simplify calculations you do frequently. Us
 Pyco comes with several useful variables already defined:
 
 - `_` - The result of your last calculation
+- `_1`, `_2`, `_3`, ... - All previous calculation results, numbered in order
 - `_list` - The last list you input
 - `pi` - The mathematical constant π (3.14159...)
 - `e` - The mathematical constant e (2.71828...)
@@ -268,6 +294,7 @@ These functions help with everyday tasks:
 
 - `tally` - Type a letter for everything you want to count. Will tell you how many things you typed in total.
 - `human(number)` - Break down large numbers into readable parts
+- `history` - Display all previous calculations and their results
 - `asciitable` or `at` - Display a table of ASCII characters
 
 ```
@@ -314,6 +341,21 @@ For example:
 473.176
 ```
 
+### Combined unit conversions
+
+Pyco can also handle combined units using `/` for ratios and `*` for products. This is useful for converting rates and compound measurements:
+
+```
+>>> convert('mi/h', 'km/h', 60)
+96.56064
+>>> convert('$cad/l', '$usd/gal', 1.50)
+4.29
+>>> convert('ft*lb', 'm*kg', 10)
+1.3825495
+```
+
+Pyco will automatically find the conversion path through intermediate units when needed, so you do not need to convert each unit separately.
+
 **What units are available?**
 Type `units` to see all available units, or `units('search_term')` to find specific ones:
 
@@ -343,6 +385,77 @@ The units function is smart about typos too - try searching for "celcius" or "me
 - **Speed:** meters/second (mps), kilometers/hour (kph), miles/hour (mph), knots (kn)
 - **Power:** watts (w), horsepower (hp)
 - **Time:** seconds (s), minutes (min), hours (h), days (d), weeks (wk), years (yr)
+
+## Currency conversions
+Pyco can convert between currencies using the same `convert` function. Currency codes are prefixed with a dollar sign ($):
+
+```
+>>> convert('$usd', '$eur', 100)
+92.15
+>>> convert('$gbp', '$jpy', 50)
+9847.5
+>>> convert('$cad', '$usd', 200)
+147.06
+```
+
+To see all available currencies, use the `currencies` function:
+
+```
+>>> currencies()
+
+CURRENCIES:
+  $AUD Australia Dollar
+  $CAD Canada Dollar
+  $EUR Euro
+  $GBP United Kingdom Pound
+  $JPY Japan Yen
+  $USD United States Dollar
+  ...
+```
+
+You can also search for specific currencies:
+
+```
+>>> currencies('euro')
+
+CURRENCIES:
+  $EUR Euro
+```
+
+## Timezone conversions
+Convert times between timezones using the same `convert` function:
+
+```
+>>> convert('pst', 'est', 9)
+12
+>>> convert('gmt', 'jst', 14.5)
+23.5
+>>> convert('utc', 'pst', 20)
+12
+```
+
+Times are in 24-hour format. You can use decimal hours for minutes (e.g., 14.5 for 2:30 PM).
+
+To see all available timezones, use the `timezones` function:
+
+```
+>>> timezones()
+
+TIMEZONES:
+  EST   Eastern Standard Time (UTC-05:00)
+  PST   Pacific Standard Time (UTC-08:00)
+  UTC   Coordinated Universal Time (UTC+00:00)
+  ...
+```
+
+You can search for timezones by name or location:
+
+```
+>>> timezones('pacific')
+
+TIMEZONES:
+  PST   Pacific Standard Time (UTC-08:00)
+```
 
 ## Statistical functions
 When working with lists of numbers, these functions help you understand your data:
