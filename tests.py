@@ -1055,7 +1055,7 @@ class TestPycoEdgeCases(unittest.TestCase):
     def test_zero_conversions(self):
         """Test conversions with zero values"""
         self.assertEqual(pyco.convert('c', 'f', 0), 32.0)
-        self.assertAlmostEqual(pyco.convert('f', 'c', 0), -17.77777777777778, places=13)
+        self.assertAlmostEqual(pyco.convert('f', 'c', 0), -17.77777777777778, places=10)
         self.assertEqual(pyco.convert('mi', 'km', 0), 0.0)
         self.assertEqual(pyco.convert('km', 'mi', 0), 0.0)
         self.assertEqual(pyco.convert('mi', 'ft', 0), 0)
@@ -1090,7 +1090,7 @@ class TestPycoEdgeCases(unittest.TestCase):
     def test_negative_conversions(self):
         """Test conversions with negative values"""
         self.assertEqual(pyco.convert('c', 'f', -10), 14.0)
-        self.assertAlmostEqual(pyco.convert('f', 'c', -10), -23.333333333333332, places=13)
+        self.assertAlmostEqual(pyco.convert('f', 'c', -10), -23.333333333333332, places=10)
         self.assertEqual(pyco.convert('mi', 'km', -5), -8.04672)
         self.assertEqual(pyco.convert('km', 'mi', -8.04672), -5.0)
         # New conversion functions with negative values

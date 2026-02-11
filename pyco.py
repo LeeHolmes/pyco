@@ -449,6 +449,28 @@ def average(list):
 # Category information is encoded in unit names using the format: category.unit
 # This eliminates the need for separate category metadata while maintaining type safety.
 
+def _clean_float(value):
+    """Clean up floating-point artifacts.
+    
+    Fixes obvious noise like 3499.9999999999995 -> 3500.0 or 
+    1.0000000000001 -> 1.0, without affecting legitimately precise values.
+    
+    Args:
+        value: The number to clean
+        
+    Returns:
+        The cleaned value as a float
+    """
+    if value == 0:
+        return 0.0
+    
+    # Round to 12 decimal places to catch things like 3499.9999999999995
+    rounded = round(value, 12)
+    if abs(value - rounded) < abs(value) * 1e-14:
+        return rounded
+    
+    return value
+
 def _get_unit_category(unit):
     """Extract the category from a unit name (category.unit format)."""
     if '.' in unit:
@@ -1318,11 +1340,11 @@ def _convert_simple(from_unit, to_unit, value):
     conversion_factor_or_func = _get_conversion_factor(from_unit_internal, to_unit_internal)
     if conversion_factor_or_func is not None:
         if callable(conversion_factor_or_func):
-            return conversion_factor_or_func(value)
+            return _clean_float(conversion_factor_or_func(value))
         else:
-            return value * conversion_factor_or_func
+            return _clean_float(value * conversion_factor_or_func)
     
-    # Use BFS to find conversion path, applying functions/factors to the value
+    # Use BFS to find conversion path
     visited = set()
     queue = [(from_unit_internal, value)]
     
@@ -1330,7 +1352,7 @@ def _convert_simple(from_unit, to_unit, value):
         current_unit, current_value = queue.pop(0)
         
         if current_unit == to_unit_internal:
-            return current_value
+            return _clean_float(current_value)
         
         if current_unit in visited:
             continue
@@ -1484,7 +1506,7 @@ def convert(from_unit="", to_unit="", value=0):
             _print_buffered(error_lines)
             return None
         
-        return value * factor
+        return _clean_float(value * factor)
     
     # Handle simple unit conversion
     # Check if units are valid before attempting conversion
