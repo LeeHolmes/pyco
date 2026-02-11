@@ -629,6 +629,20 @@ _CONVERSION_MATRIX = {
 
     # Power conversions
     ('power.w', 'power.hp'): 1/745.7,
+    
+    # Energy conversions
+    ('energy.cal', 'energy.kcal'): 1/1000,
+    ('energy.cal', 'energy.j'): 4.184,
+    ('energy.j', 'energy.kj'): 1/1000,
+    ('energy.j', 'energy.wh'): 1/3600,
+    ('energy.wh', 'energy.kwh'): 1/1000,
+    ('energy.btu', 'energy.j'): 1055.06,
+    ('energy.kcal', 'energy.lbfat'): 1/3500,  # Dietary: ~3500 kcal = 1 lb body fat
+    
+    # Angle conversions
+    ('angle.deg', 'angle.rad'): 0.017453292519943295,  # pi/180
+    ('angle.rad', 'angle.grad'): 200/3.141592653589793,  # 200/pi
+    ('angle.deg', 'angle.grad'): 10/9,  # 400 gradians = 360 degrees
 }
 
 _CURRENCY_DATA = "H4sIAAAAAAAC/7VbW3PayBL+K5Qfzr5kVeiCQHnjZsBIQCSwY06dSg1oAhMLiR1JdvDW/vdt7N2tpLuVUo7Zl1QKm0+jnr58/XX79ystt5mOP8WikFfvr6ym1frVtH61zat3V0VWiOTT6y/kV+9N13p3Bb8nrt7/9/erbVamhT7Bd4alzhrrLJXwlW2ptUy3f38Mn8iv271Id/KTfn1C0+i0zG9+89M2i8+fD1fh1R/vvsXtft7BN1VeiPR75L9+wIC7LcNzGfDu9QyDJxuAEN8D+/KBAe2YcGQO1PcJ6E5qDDpQqdAMrGl1DM/iTDFYDzBwussShDt9EumzYIA90zKsDmuGeZcAF2pXisZ/Gj2hN2WMnjEUedHoC602GynSxiBLEvZdLKNNH5eWSYKepncSHpiipyxkznmK6XSaRpN7jTDCr6EPktzmQIsDA2tXoQbE6mVeaJEQ3CormIbjsY6yIsjPUm+E+oI9OxCpKFjkNoe7xl7dE3txEHnt83J26EUDiqqFSuu5ddOw29xhe2MKm+4SEct8/z3yUjwINl5s/ryDJQEG48ZZXTNYRtPicHvkwDJRz7I+Kge6pqApNm3/s2hca5FuGdhWyzbanJN9nF8TZH0gEf2zzkCCopcl6hGHxF8fplwYu3z27M1vCXJOYjgQmncGw3UdDrUbENQih0yJU06Z8D5mmDaXOXt3C4yrxbNKvkcNpUi4OzMcPiRCn4CWqVS1b8ziLTsjd1YCboxwqzzMbjb5BNmbYA/ri8Mmi/GdhUpyVnCaTd7HpuOQ4kqdZT8VFq7hcA7xsUsPnYqfiArb9RjYfndAYI+ycSt1jGlQvi1jLi482+iYdapmX5wOUHwneSLSuG5SA5rFJbXpPTn3XiWyVj32wC9szuH6/jUFxREXyvSg0g3L2gzP63C4s3uMmyXZYaPq8QeoQ7bhclboz1cE+JBpXDGqnM0xO4bFOds0IIbIgLldwI37A4oMxLgRqi0yxtlEKXdo8Dc2tfXDPoEuZGPwy+QxU1q+vTQxHl1u8Kn34lEVWe261F/hfNwvtdgKbOt/qOuoVEks+RBvd2od+llu941QHstNoraIi2eQYLmCYjUNs8lx/P56il5gIA/ZFr6mtv88pDH/3OA86PxRInNZeRWWZbY4u9G3GkBYQo1Fr6NfuzkaqHaLSwCDKXmZL2qTlUXNkmO22+wtD26w1w8ySCLg82nFRVSkAhcaFM73P/ZxOhxuS6COmmRZoWVe2ztXhEIPd6djgY4KP4y5QG0b3FGHI+zxQ60KLVEgzcTDZ5bZsP5wNQxxCzEEtgQtGro5XyVnNLbpNl2j5XBHjtaY3wyLvcqOhD0qzQZmy6lgecNlDwFfqy+qNjG3bAbz+gbf2UjQUjMQicg5I7R5vj8i/HkkM70jwgPkKfaorsvF22iIDTvaE4rblzF7W02DM+lojHvqUQlfOAgsO3woZfHM0lzwW84LRssPBFmlUjR6Ks9FeYHWZzS7Jk84EXtUO0RFbIwIVxpnaQxlJseq0eGoNJv9IWFanE3GM59C7xpT+KfmodtQtbh7HE/Joct0J+B/32fiTKuUUxpsq21YHGcar7CRJ1t5ZqS0dPCdVcswuUI4iXDtmKS0pSiPkitIHQ+aS84Mk1lIUaGo5QyyEns2q7mOB8SUAx8QcI2VnFCxMeJYVd3VJGRAf6spJdpNz+AiY/IBe8Mk10KitjXaywe2ZbMN02PvzMfJ4gZkJ0JFq7uqlsfa4IZkyxtxxJa9lykL6Roud9abBW4ibkDOFrXVrHaTa01u5vikU/EsHvZUrF5KgOOyWdOF/p1rItZYz5rK9CTwlakkUS/ZgtWVOdwhvjRgrZg+3LG9g+k4Fal3Gt5h0PJJqKK2Vshad3pHrHvSu9MztW6UcRJvp204Jtv+jrANfIG7vqk68kWiadej1L6E0QIWL6rYXsdrVSQEv4cJnw/ktthnWCFLsuKnaNm6izONrzbM3KIyeivYuh8OKO6p5jQENDJWhfVJEQ5AvdmJfCsQSe/CG7yUOZJznTZv4WDUJdiJeFJkzgJ4rB1aPP0P7qYM7onWHgjgneKqsGM0W9zVBfchRY7Vo8xxVfusTqKiD3A4Owe3FLmEBoMOyeblrlQnDtv2jDZbMINwxYKrMq9X5x3X4HJ7QGaGgfyqtlm98VLb8Hgjf8TKdJAlcfZIhoUlH3WsYBgMfAJ67uKxdZflTituCgmdNx92wWxJkHW2xVYYKL1n52FehUIREIkzyJ7PLdFvJRKFAgmiBUt3XNuwOOU7IJOrAAj7AYf09MROw2y31eFNEeDAm8mjSOr5mHmucdzVzRYhQX1qrEHrJ+z3Bzpy2+a6zhmZB83AlFrATBZrPjrONmzUuaxeMJvMCTIznZ4JvnUxnRafNGcjfHWzTD+JUz0FCbrPZpvLP7M5vrr5oSanBhbBzkHmAb63hXhg1gmqHMJqQ3fB4C6mFPcIM/SzV7y2tphQsB2RY5isiLwYTQn8i0MgE0N/rqu2IM7KCRfTi/sRxpa6xJSKbwVsVkpfDLE7LICaquMR7JDXysMQyx7bGS7GmAAtMhpya6A/J/bALS6YFz4+7wfYaNHY0U6CNwIrR30ghOpbARfCo9g3ArGV0IASkiUr6BAMItnaRNr7MDvQGn12Rb4+OYZtc+8QzrFdwjJnuuVNIvkVGY9dvAlXWKkLYRiLx2+VunBVEgrvsBgRiayxzA4SNlkWIG1s1VFSkwyyzat6w8j0HY4WUXIfiTJWja4WG8rmqpyG7Zwi4jQR7ITUXR7ygGpxMRMS5TmSp+1eJomsSbXM81iSK1VRnxxYSa0FOBrZ/fr7I2Jnm11kifwhgQbR6php+cZZeDQi9jiPELOfHacCV2yy+D2KX0K4RyWRGF4+Og9tKoV/t6ITjCKcCCOtGr5IH2rKZGd5iAt6n1SyqDAafrlV/+4eWATkP4UZf03j222j02T9hnSc0ZOMZVpPkgTi67GowylBVQVsbNHiU5W4QDby2MHzGMsl0YlQsir/MM0q7TC6xw6yFOqJaFyV9oUtB5aKLIkOsxRfFMehonNMKdbInB2WNxEBhmVGUsd+IHNZjsMbY7km2Huh6N3BVlvBG4MdYyzHuJItoYHDVyd+6b5+SCPDZoXq5ZxcHcSGikUMlWwJjB8Pfytv0YURZ61B9rKEpdq6hcYyOi4XJEuyZLQs9YM8MTyEbzAcC9pvs9559cN5vZN63Rm+amXShmVMrkIuA9wur3aUkfzA8Wy3Yl60Gn3EyA/nvUmU5sb69Pjq6IxJTHaBdNUdY+RUFTJ+4SGN4UGdAfKa/T6QWLYD6w4H/EOgf9nFLzprjSQFmc/h2MOIqJkrXdKmpmqVB3I1Fz2re5xPV88bWZGg2JTqAZNyOD9ZkTRyK1IYiaJu6fb1EwbYYFnU7QqLS7cylc+lTLiVSqEbUQbaLL9ZCZt60OZxLeotuctbJYtUHHAu4VOra3m8i9+SqL+TeSF12ojEIcNSlkj4TMiPVO4iHJj38iDrSQAtixeE7oeY4KyZof45jVSqvBY/2F8H2PPW6rARmycU7SOQDjlUsC9L4Nd3I24LnRCyt/5xBewy71R5uDRqmcCs+eKH7esMdlIujno6aixAvxl0mBe0y38z6rVKKYF5O+qZvV76r3ZGsHUu0tOlUbWUFz/qRMt/waoT+KOpS7++L4rHizuVr4p9KS7vrH75VcJeeKl3FwaGWVdx6cPOZLF/7ewunQkWoPuVOzx9eDNslMAk6uHil3aGlZf3hehI/nDo/8H83x9/Ah7ZogapOAAA"
@@ -693,6 +707,21 @@ _UNIT_NAMES = {
     # Power units
     'w': 'watts',
     'hp': 'horsepower',
+    
+    # Energy units
+    'cal': 'calories',
+    'kcal': 'kilocalories',
+    'j': 'joules',
+    'kj': 'kilojoules',
+    'wh': 'watt-hours',
+    'kwh': 'kilowatt-hours',
+    'btu': 'british thermal units',
+    'lbfat': 'pounds (body fat)',
+    
+    # Angle units
+    'deg': 'degrees',
+    'rad': 'radians',
+    'grad': 'gradians',
 }
 
 # Timezone data: key -> (full_name, UTC offset in hours)

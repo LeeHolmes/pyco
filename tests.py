@@ -806,6 +806,77 @@ class TestPycoPowerConversions(unittest.TestCase):
         self.assertAlmostEqual(pyco.convert('w', 'hp', 1491.4), 2, places=3)
         self.assertAlmostEqual(pyco.convert('hp', 'w', 1), 745.7, places=1)
         self.assertAlmostEqual(pyco.convert('hp', 'w', 2), 1491.4, places=1)
+
+class TestPycoEnergyConversions(unittest.TestCase):
+    """Test energy conversion functions"""
+    
+    def test_calories_joules_conversion(self):
+        """Test calories to joules conversion"""
+        self.assertAlmostEqual(pyco.convert('cal', 'j', 1), 4.184, places=3)
+        self.assertAlmostEqual(pyco.convert('j', 'cal', 4.184), 1, places=3)
+    
+    def test_calories_kilocalories_conversion(self):
+        """Test calories to kilocalories conversion"""
+        self.assertAlmostEqual(pyco.convert('cal', 'kcal', 1000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('kcal', 'cal', 1), 1000, places=5)
+    
+    def test_joules_kilojoules_conversion(self):
+        """Test joules to kilojoules conversion"""
+        self.assertAlmostEqual(pyco.convert('j', 'kj', 1000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('kj', 'j', 1), 1000, places=5)
+    
+    def test_joules_watthours_conversion(self):
+        """Test joules to watt-hours conversion"""
+        self.assertAlmostEqual(pyco.convert('j', 'wh', 3600), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('wh', 'j', 1), 3600, places=5)
+    
+    def test_watthours_kilowatthours_conversion(self):
+        """Test watt-hours to kilowatt-hours conversion"""
+        self.assertAlmostEqual(pyco.convert('wh', 'kwh', 1000), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('kwh', 'wh', 1), 1000, places=5)
+    
+    def test_btu_joules_conversion(self):
+        """Test BTU to joules conversion"""
+        self.assertAlmostEqual(pyco.convert('btu', 'j', 1), 1055.06, places=1)
+        self.assertAlmostEqual(pyco.convert('j', 'btu', 1055.06), 1, places=3)
+    
+    def test_kcal_lbfat_conversion(self):
+        """Test kilocalories to pounds (body fat) conversion - dietary estimate"""
+        self.assertAlmostEqual(pyco.convert('kcal', 'lbfat', 3500), 1, places=5)
+        self.assertAlmostEqual(pyco.convert('lbfat', 'kcal', 1), 3500, places=5)
+        self.assertAlmostEqual(pyco.convert('kcal', 'lbfat', 7000), 2, places=5)
+    
+    def test_multistep_energy_conversion(self):
+        """Test multi-step energy conversions"""
+        # kcal to joules (via cal)
+        self.assertAlmostEqual(pyco.convert('kcal', 'j', 1), 4184, places=0)
+        # BTU to wh (via joules)
+        self.assertAlmostEqual(pyco.convert('btu', 'wh', 1), 1055.06/3600, places=3)
+
+class TestPycoAngleConversions(unittest.TestCase):
+    """Test angle conversion functions"""
+    
+    def test_degrees_radians_conversion(self):
+        """Test degrees to radians conversion"""
+        import math
+        self.assertAlmostEqual(pyco.convert('deg', 'rad', 180), math.pi, places=10)
+        self.assertAlmostEqual(pyco.convert('deg', 'rad', 90), math.pi/2, places=10)
+        self.assertAlmostEqual(pyco.convert('deg', 'rad', 360), 2*math.pi, places=10)
+        self.assertAlmostEqual(pyco.convert('rad', 'deg', math.pi), 180, places=10)
+        self.assertAlmostEqual(pyco.convert('rad', 'deg', math.pi/2), 90, places=10)
+    
+    def test_degrees_gradians_conversion(self):
+        """Test degrees to gradians conversion"""
+        self.assertAlmostEqual(pyco.convert('deg', 'grad', 90), 100, places=10)
+        self.assertAlmostEqual(pyco.convert('deg', 'grad', 360), 400, places=10)
+        self.assertAlmostEqual(pyco.convert('grad', 'deg', 100), 90, places=10)
+        self.assertAlmostEqual(pyco.convert('grad', 'deg', 400), 360, places=10)
+    
+    def test_radians_gradians_conversion(self):
+        """Test radians to gradians conversion"""
+        import math
+        self.assertAlmostEqual(pyco.convert('rad', 'grad', math.pi), 200, places=10)
+        self.assertAlmostEqual(pyco.convert('grad', 'rad', 200), math.pi, places=10)
     
 class TestPycoMultiStepConversions(unittest.TestCase):
     """Test multi-step conversions using the new dynamic programming system"""
