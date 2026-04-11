@@ -885,21 +885,39 @@ def _get_timezone_offset(unit_str):
         return _TIMEZONE_DATA[normalized][1]
     return None
 
-def _matches_search(unit_abbrev, unit_full_name, search_term):
-    """Check if unit matches search term using fuzzy string matching for typos."""
+def _get_conversion_category(unit_str):
+    """Return the conversion category for an input unit string, or None if unknown."""
+    if _is_timezone(unit_str):
+        return 'timezone'
+
+    if unit_str.startswith('$'):
+        return 'currency'
+
+    internal_unit = _to_internal_unit(unit_str)
+    category = _get_unit_category(internal_unit)
+    if category != 'unknown':
+        return category
+
+    return None
+
+def _get_search_similarity(unit_abbrev, unit_full_name, search_term):
+    """Calculate similarity score for a unit against a search term.
+    
+    Returns the maximum similarity score across all matching strategies.
+    Returns 0 if no meaningful match is found."""
     if not search_term:
-        return True
+        return 0
     
     search_lower = search_term.lower()
     unit_abbrev_lower = unit_abbrev.lower() if unit_abbrev else ''
     unit_full_name_lower = unit_full_name.lower() if unit_full_name else ''
     
-    # Exact partial match (high priority)
+    # Exact partial match (highest priority - score 1.0)
     if (search_lower in unit_abbrev_lower or 
         search_lower in unit_full_name_lower):
-        return True
+        return 1.0
     
-    # Fuzzy matching for typos (similarity threshold of 0.6)
+    # Fuzzy matching for typos
     abbrev_similarity = difflib.SequenceMatcher(None, search_lower, unit_abbrev_lower).ratio()
     name_similarity = difflib.SequenceMatcher(None, search_lower, unit_full_name_lower).ratio()
     
@@ -908,11 +926,8 @@ def _matches_search(unit_abbrev, unit_full_name, search_term):
     word_similarities = [difflib.SequenceMatcher(None, search_lower, word).ratio() for word in name_words]
     max_word_similarity = max(word_similarities) if word_similarities else 0
     
-    # Return True if any similarity score is above threshold
-    similarity_threshold = 0.6
-    return (abbrev_similarity >= similarity_threshold or 
-            name_similarity >= similarity_threshold or
-            max_word_similarity >= similarity_threshold)
+    # Return the maximum similarity score
+    return max(abbrev_similarity, name_similarity, max_word_similarity)
 
 # Top currencies to show in units() when not searching
 _TOP_CURRENCIES = ['$usd', '$eur', '$gbp', '$jpy', '$cad', '$aud', '$chf', '$cny']
@@ -949,18 +964,24 @@ def _generate_units_lines(search="", categories=None):
         
         # Filter based on search term
         if search:
-            units = []
+            scored_units = []
             for unit in all_units:
                 if category == 'timezone':
                     tz_name, tz_offset = _TIMEZONE_DATA[unit]
                     input_format = _get_timezone_input_format(unit)
                     full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
-                    if _matches_search(input_format, full_name, search):
-                        units.append(unit)
+                    score = _get_search_similarity(input_format, full_name, search)
+                    if score > 0:
+                        scored_units.append((unit, score))
                 else:
                     full_name = _UNIT_NAMES.get(unit, unit)
-                    if _matches_search(unit, full_name, search):
-                        units.append(unit)
+                    score = _get_search_similarity(unit, full_name, search)
+                    if score > 0:
+                        scored_units.append((unit, score))
+            
+            # Sort by score (descending) and take top 5
+            scored_units.sort(key=lambda x: (-x[1], x[0]))
+            units = [unit for unit, score in scored_units[:5]]
         else:
             if category == 'currency':
                 # Show only top currencies (base codes) when not searching
@@ -978,13 +999,24 @@ def _generate_units_lines(search="", categories=None):
         
         lines.append(f"{category.upper()}:")
         
+        # Calculate max width for display_unit to fit all items
+        max_display_width = 5
+        for unit in units:
+            if category == 'timezone':
+                display_unit = _get_timezone_input_format(unit)
+            elif category == 'currency':
+                display_unit = unit.split('_')[0].upper() if '_' in unit else unit.upper()
+            else:
+                display_unit = unit
+            max_display_width = max(max_display_width, len(display_unit))
+        
         # Format units in 2-column layout
         i = 0
         while i < len(units):
             unit1 = units[i]
             if category == 'timezone':
                 tz_name1, tz_offset1 = _TIMEZONE_DATA[unit1]
-                display_unit1 = _get_timezone_display(unit1)
+                display_unit1 = _get_timezone_input_format(unit1)
                 full_name1 = f"{tz_name1} ({_format_utc_offset(tz_offset1)})"
             elif category == 'currency':
                 full_name1 = _UNIT_NAMES.get(unit1, unit1)
@@ -992,7 +1024,7 @@ def _generate_units_lines(search="", categories=None):
             else:
                 full_name1 = _UNIT_NAMES.get(unit1, unit1)
                 display_unit1 = unit1
-            col1 = f"{display_unit1:<5} {full_name1}"
+            col1 = f"{display_unit1:<{max_display_width}} {full_name1}"
             
             if len(col1) > 18:
                 lines.append(f"  {col1}")
@@ -1001,7 +1033,7 @@ def _generate_units_lines(search="", categories=None):
                 unit2 = units[i + 1]
                 if category == 'timezone':
                     tz_name2, tz_offset2 = _TIMEZONE_DATA[unit2]
-                    display_unit2 = _get_timezone_display(unit2)
+                    display_unit2 = _get_timezone_input_format(unit2)
                     full_name2 = f"{tz_name2} ({_format_utc_offset(tz_offset2)})"
                 elif category == 'currency':
                     full_name2 = _UNIT_NAMES.get(unit2, unit2)
@@ -1009,14 +1041,14 @@ def _generate_units_lines(search="", categories=None):
                 else:
                     full_name2 = _UNIT_NAMES.get(unit2, unit2)
                     display_unit2 = unit2
-                col2 = f"{display_unit2:<5} {full_name2}"
+                col2 = f"{display_unit2:<{max_display_width}} {full_name2}"
                 
                 if len(col2) > 18:
                     lines.append(f"  {col1}")
                     i += 1
                 else:
-                    total_line = f"  {col1:<18} {col2}"
-                    if len(total_line) <= 37:
+                    total_line = f"  {col1:<{18 + max_display_width}} {col2}"
+                    if len(total_line) <= 50:
                         lines.append(total_line)
                         i += 2
                     else:
@@ -1444,33 +1476,27 @@ def convert(from_unit="", to_unit="", value=0):
     if from_unit.lower() == to_unit.lower():
         return value
     
-    # Handle timezone conversions (additive offset, not multiplicative)
-    from_is_tz = _is_timezone(from_unit)
-    to_is_tz = _is_timezone(to_unit)
-    
-    if from_is_tz or to_is_tz:
-        if not from_is_tz:
-            # Check if from_unit looks like a timezone attempt - suggest close matches
-            error_lines = [f"Could not convert the timezone '{from_unit}'. Did you mean one of the following?"]
-            units_lines = _generate_units_lines(from_unit, categories=['timezone'])
-            all_lines = error_lines + units_lines
-            _print_buffered(all_lines)
-            return None
-        if not to_is_tz:
-            # Check if to_unit looks like a timezone attempt - suggest close matches
-            error_lines = [f"Could not convert the timezone '{to_unit}'. Did you mean one of the following?"]
-            units_lines = _generate_units_lines(to_unit, categories=['timezone'])
-            all_lines = error_lines + units_lines
-            _print_buffered(all_lines)
-            return None
-        
+    # Determine high-level categories first so cross-category conversion errors are generic.
+    from_category = _get_conversion_category(from_unit)
+    to_category = _get_conversion_category(to_unit)
+
+    # Handle timezone-to-timezone conversions (additive offset, not multiplicative)
+    if from_category == 'timezone' and to_category == 'timezone':
         from_offset = _get_timezone_offset(from_unit)
         to_offset = _get_timezone_offset(to_unit)
-        
+
         # Timezone conversion: add the difference in offsets
         # If PST (-8) to China CST (+8), difference is +16
         offset_diff = to_offset - from_offset
         return value + offset_diff
+
+    # Any known categories that differ should fail fast with a category mismatch message.
+    if from_category and to_category and from_category != to_category:
+        error_lines = [
+            f"Cannot convert between categories: '{from_unit}' ({from_category}) and '{to_unit}' ({to_category})"
+        ]
+        _print_buffered(error_lines)
+        return None
     
     # Check if we're dealing with combined units (expressions with * or /)
     from_is_combined = _is_combined_unit(from_unit)
@@ -1660,24 +1686,36 @@ def currencies(search=""):
     
     lines = ["", "CURRENCIES:"]
     
-    # Get all currency entries from _UNIT_NAMES (keys with $code_country pattern)
-    entries = []  # List of (code, full_name) tuples
-    for unit_key, full_name in _UNIT_NAMES.items():
-        if unit_key.startswith('$') and '_' in unit_key:
-            base_code = unit_key.split('_')[0]  # $eur
-            if search:
-                if _matches_search(unit_key, full_name, search):
-                    entries.append((base_code, full_name))
-            else:
+    if search:
+        # For searches, rank by similarity and show top 5
+        scored_entries = []
+        for unit_key, full_name in _UNIT_NAMES.items():
+            if unit_key.startswith('$') and '_' in unit_key:
+                base_code = unit_key.split('_')[0]
+                score = _get_search_similarity(unit_key, full_name, search)
+                if score > 0:
+                    scored_entries.append((base_code, full_name, score))
+        
+        # Sort by score (descending) and take top 5
+        scored_entries.sort(key=lambda x: (-x[2], x[1]))
+        entries = [(base_code, full_name) for base_code, full_name, _ in scored_entries[:5]]
+    else:
+        # For no search, show all currencies
+        entries = []
+        for unit_key, full_name in _UNIT_NAMES.items():
+            if unit_key.startswith('$') and '_' in unit_key:
+                base_code = unit_key.split('_')[0]
                 entries.append((base_code, full_name))
     
     if not entries:
         lines.append("  No matching currencies found.")
     else:
         entries.sort(key=lambda x: x[1])  # Sort by full_name (country)
+        # Calculate max width for display code to fit all items
+        max_display_width = max(len(code.upper()) for code, _ in entries) if entries else 5
         for code, full_name in entries:
             display_code = code.upper()
-            lines.append(f"  {display_code:<5} {full_name}")
+            lines.append(f"  {display_code:<{max_display_width}} {full_name}")
     
     lines.append("")
     _print_buffered(lines)
@@ -1691,23 +1729,35 @@ def timezones(search=""):
     """
     lines = ["", "TIMEZONES:"]
     
-    entries = []  # List of (display, full_name) tuples
-    for tz_key, (tz_name, tz_offset) in _TIMEZONE_DATA.items():
-        display = _get_timezone_display(tz_key)
-        input_format = _get_timezone_input_format(tz_key)
-        full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
-        if search:
-            if _matches_search(input_format, full_name, search):
-                entries.append((display, full_name))
-        else:
+    if search:
+        # For searches, rank by similarity and show top 5
+        scored_entries = []
+        for tz_key, (tz_name, tz_offset) in _TIMEZONE_DATA.items():
+            input_format = _get_timezone_input_format(tz_key)
+            full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
+            score = _get_search_similarity(input_format, full_name, search)
+            if score > 0:
+                scored_entries.append((input_format, full_name, score))
+        
+        # Sort by score (descending) and take top 5
+        scored_entries.sort(key=lambda x: (-x[2], x[0]))
+        entries = [(input_format, full_name) for input_format, full_name, _ in scored_entries[:5]]
+    else:
+        # For no search, show all timezones with disambiguator
+        entries = []
+        for tz_key, (tz_name, tz_offset) in _TIMEZONE_DATA.items():
+            display = _get_timezone_input_format(tz_key)
+            full_name = f"{tz_name} ({_format_utc_offset(tz_offset)})"
             entries.append((display, full_name))
     
     if not entries:
         lines.append("  No matching timezones found.")
     else:
         entries.sort(key=lambda x: x[1])  # Sort by full name
+        # Calculate max width for display to fit all items
+        max_display_width = max(len(display) for display, _ in entries) if entries else 5
         for display, full_name in entries:
-            lines.append(f"  {display:<6} {full_name}")
+            lines.append(f"  {display:<{max_display_width}} {full_name}")
     
     lines.append("")
     _print_buffered(lines)

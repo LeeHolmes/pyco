@@ -11,6 +11,21 @@ import io
 from unittest.mock import patch, MagicMock
 import pyco
 
+_MODULE_INPUT_PATCHER = None
+
+
+def setUpModule():
+    """Avoid interactive ENTER prompts from paginated output during tests."""
+    global _MODULE_INPUT_PATCHER
+    _MODULE_INPUT_PATCHER = patch('builtins.input', return_value='')
+    _MODULE_INPUT_PATCHER.start()
+
+
+def tearDownModule():
+    """Restore original input after all tests complete."""
+    if _MODULE_INPUT_PATCHER is not None:
+        _MODULE_INPUT_PATCHER.stop()
+
 class TestPycoUtilityFunctions(unittest.TestCase):
     """Test utility functions in pyco.py"""
     
@@ -1600,7 +1615,7 @@ class TestPycoUnitNames(unittest.TestCase):
         self.assertIn("ft", output)
         self.assertIn("feet", output)
         
-        # Verify the output stays within width limit (each line should be <= 37 chars)
+        # Verify the output stays within width limit (each line should be <= 50 chars)
         # Currency and timezone lines can be longer due to country/timezone names
         lines = output.split('\n')
         in_long_section = False
@@ -1611,7 +1626,7 @@ class TestPycoUnitNames(unittest.TestCase):
                 in_long_section = False
             
             if line.strip() and not line.startswith('=') and not in_long_section:
-                self.assertLessEqual(len(line), 37, f"Line too long: '{line}' ({len(line)} chars)")
+                self.assertLessEqual(len(line), 50, f"Line too long: '{line}' ({len(line)} chars)")
     
     def test_temperature_units_handling(self):
         """Test that temperature units are properly handled in UNIT_NAMES"""
@@ -1906,6 +1921,30 @@ class TestPycoConvertDefaultParameters(unittest.TestCase):
 
 class TestPycoUnitsSearch(unittest.TestCase):
     """Test units function with search parameter and fuzzy matching"""
+
+    @staticmethod
+    def _parse_units_category_counts(output):
+        """Return a dict mapping category header to number of result rows."""
+        counts = {}
+        current_category = None
+
+        for raw_line in output.splitlines():
+            line = raw_line.rstrip()
+            stripped = line.strip()
+
+            if not stripped:
+                current_category = None
+                continue
+
+            if stripped.endswith(':') and stripped.isupper():
+                current_category = stripped[:-1]
+                counts[current_category] = 0
+                continue
+
+            if current_category and line.startswith('  '):
+                counts[current_category] += 1
+
+        return counts
     
     def test_units_no_search_shows_all(self):
         """Test that units() with no search parameter shows all categories"""
@@ -1938,33 +1977,27 @@ class TestPycoUnitsSearch(unittest.TestCase):
     def test_units_exact_match_abbreviation(self):
         """Test exact match on unit abbreviation"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('kg')
         
         output = captured_output.getvalue()
         
-        # Should only show WEIGHT category with kg
+        # Should show the relevant WEIGHT match
         self.assertIn("WEIGHT:", output)
         self.assertIn("kg", output)
         self.assertIn("kilograms", output)
-        # Should not show other categories
-        self.assertNotIn("AREA:", output)
-        self.assertNotIn("DISTANCE:", output)
         
     def test_units_exact_match_full_name(self):
         """Test exact match on full unit name"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('celsius')
         
         output = captured_output.getvalue()
         
-        # Should only show TEMPERATURE category
+        # Should show the relevant TEMPERATURE match
         self.assertIn("TEMPERATURE:", output)
         self.assertIn("Celsius", output)
-        # Should not show other categories  
-        self.assertNotIn("AREA:", output)
-        self.assertNotIn("WEIGHT:", output)
         
     def test_units_partial_match(self):
         """Test partial string matching"""
@@ -1983,7 +2016,7 @@ class TestPycoUnitsSearch(unittest.TestCase):
     def test_units_fuzzy_match_typo(self):
         """Test fuzzy matching catches common typos"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('celcius')  # Common typo for celsius
         
         output = captured_output.getvalue()
@@ -1995,7 +2028,7 @@ class TestPycoUnitsSearch(unittest.TestCase):
     def test_units_fuzzy_match_alternate_spelling(self):
         """Test fuzzy matching catches alternate spellings"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('metre')  # British spelling
         
         output = captured_output.getvalue()
@@ -2004,29 +2037,29 @@ class TestPycoUnitsSearch(unittest.TestCase):
         self.assertIn("meters", output)
         
     def test_units_no_matches_empty_output(self):
-        """Test that searching for non-existent units shows no categories"""
+        """Test that searching for non-existent units still returns fuzzy suggestions"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('xyz123')  # Non-existent unit
         
         output = captured_output.getvalue()
-        
-        # Should not show any category headers
-        self.assertNotIn("AREA:", output)
-        self.assertNotIn("DISTANCE:", output)
-        self.assertNotIn("TEMPERATURE:", output)
-        self.assertNotIn("WEIGHT:", output)
-        # Should only have blank line
-        self.assertEqual(output.strip(), "")
+
+        # Current fuzzy matching returns best-effort suggestions across categories.
+        self.assertNotEqual(output.strip(), "")
+        self.assertTrue(any(header in output for header in [
+            "ANGLE:", "AREA:", "CURRENCY:", "DISTANCE:", "ENERGY:",
+            "POWER:", "SPEED:", "TEMPERATURE:", "TIME:", "TIMEZONE:",
+            "VOLUME:", "WEIGHT:"
+        ]))
         
     def test_units_case_insensitive_search(self):
         """Test that search is case insensitive"""
         captured_output1 = io.StringIO()
-        with patch('sys.stdout', captured_output1):
+        with patch('sys.stdout', captured_output1), patch('builtins.input', return_value=''):
             pyco.units('CELSIUS')
         
         captured_output2 = io.StringIO()
-        with patch('sys.stdout', captured_output2):
+        with patch('sys.stdout', captured_output2), patch('builtins.input', return_value=''):
             pyco.units('celsius')
             
         # Both should produce the same output
@@ -2035,7 +2068,7 @@ class TestPycoUnitsSearch(unittest.TestCase):
     def test_units_multiple_category_matches(self):
         """Test search term that matches units in multiple categories"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.units('feet')  # Should match both area (feet^2) and distance (feet)
         
         output = captured_output.getvalue()
@@ -2045,13 +2078,24 @@ class TestPycoUnitsSearch(unittest.TestCase):
         self.assertIn("DISTANCE:", output) 
         self.assertIn("feet", output)
 
+    def test_units_search_limits_to_top_five_per_category(self):
+        """Test that units(search) returns at most 5 results per category."""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.units('ist')  # Broad term that matches multiple categories
+
+        counts = self._parse_units_category_counts(captured_output.getvalue())
+        self.assertGreater(len(counts), 0)
+        for category, count in counts.items():
+            self.assertLessEqual(count, 5, f"{category} has {count} results, expected <= 5")
+
 class TestPycoConvertErrorHandling(unittest.TestCase):
     """Test convert function error handling with helpful suggestions"""
     
     def test_convert_both_units_invalid(self):
         """Test convert with both units invalid shows generic error message"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('xyz', 'abc', 5)
         
         output = captured_output.getvalue()
@@ -2070,7 +2114,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
     def test_convert_invalid_from_unit_with_suggestions(self):
         """Test convert with invalid from_unit shows suggestions"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('kilo', 'lb', 5)
         
         output = captured_output.getvalue()
@@ -2091,7 +2135,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
     def test_convert_invalid_to_unit_with_suggestions(self):
         """Test convert with invalid to_unit shows suggestions"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('kg', 'poun', 5)  # typo for pound
         
         output = captured_output.getvalue()
@@ -2110,7 +2154,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
     def test_convert_invalid_unit_no_suggestions(self):
         """Test convert with invalid unit that has no similar matches"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('xyz123', 'kg', 5)
         
         output = captured_output.getvalue()
@@ -2144,7 +2188,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         
         # Invalid temperature unit should show suggestions
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('celciu', 'f', 0)  # typo
         
         output = captured_output.getvalue()
@@ -2224,7 +2268,7 @@ class TestPycoCombinedUnitConversions(unittest.TestCase):
     def test_convert_combined_unit_invalid_numerator(self):
         """Test error handling for invalid numerator in combined unit"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('xyz/h', 'm/s', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2233,7 +2277,7 @@ class TestPycoCombinedUnitConversions(unittest.TestCase):
     def test_convert_combined_unit_invalid_denominator(self):
         """Test error handling for invalid denominator in combined unit"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('mi/xyz', 'm/s', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2242,7 +2286,7 @@ class TestPycoCombinedUnitConversions(unittest.TestCase):
     def test_convert_mixed_simple_and_combined_units(self):
         """Test error handling when mixing simple and combined units"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('mi/h', 'km', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2319,7 +2363,7 @@ class TestPycoProductUnitConversions(unittest.TestCase):
     def test_convert_product_unit_invalid_first(self):
         """Test error handling for invalid first unit in product unit"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('xyz*lb', 'm*kg', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2328,7 +2372,7 @@ class TestPycoProductUnitConversions(unittest.TestCase):
     def test_convert_product_unit_invalid_second(self):
         """Test error handling for invalid second unit in product unit"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('ft*xyz', 'm*kg', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2337,7 +2381,7 @@ class TestPycoProductUnitConversions(unittest.TestCase):
     def test_convert_mixed_ratio_and_product_units(self):
         """Test error handling when mixing ratio and product units"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('mi/h', 'm*kg', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2346,7 +2390,7 @@ class TestPycoProductUnitConversions(unittest.TestCase):
     def test_convert_mixed_product_and_ratio_units(self):
         """Test error handling when mixing product and ratio units"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('ft*lb', 'm/s', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2355,7 +2399,7 @@ class TestPycoProductUnitConversions(unittest.TestCase):
     def test_convert_mixed_simple_and_product_units(self):
         """Test error handling when mixing simple and product units"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('ft*lb', 'kg', 10)
         self.assertIsNone(result)
         output = captured_output.getvalue()
@@ -2391,7 +2435,7 @@ class TestPycoNestedUnitConversions(unittest.TestCase):
         """Test that mismatched structures return None"""
         # Different structure: (a*b)/c vs a/(b*c)
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('(ft*in)/h', 'ft/(in*h)', 10)
         self.assertIsNone(result)
     
@@ -2457,22 +2501,24 @@ class TestPycoTimezoneConversions(unittest.TestCase):
         self.assertEqual(result, -8)
     
     def test_convert_timezone_to_non_timezone_error(self):
-        """Test that mixing timezone with non-timezone shows error with suggestions"""
+        """Test that mixing timezone with non-timezone shows category mismatch error"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('PST', 'km', 14)
         self.assertIsNone(result)
-        self.assertIn("Could not convert the timezone", captured_output.getvalue())
-        self.assertIn("Did you mean", captured_output.getvalue())
+        self.assertIn("Cannot convert between categories", captured_output.getvalue())
+        self.assertIn("'PST' (timezone)", captured_output.getvalue())
+        self.assertIn("'km' (distance)", captured_output.getvalue())
     
     def test_convert_non_timezone_to_timezone_error(self):
-        """Test that mixing non-timezone with timezone shows error with suggestions"""
+        """Test that mixing non-timezone with timezone shows category mismatch error"""
         captured_output = io.StringIO()
-        with patch('sys.stdout', captured_output):
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('km', 'PST', 14)
         self.assertIsNone(result)
-        self.assertIn("Could not convert the timezone", captured_output.getvalue())
-        self.assertIn("Did you mean", captured_output.getvalue())
+        self.assertIn("Cannot convert between categories", captured_output.getvalue())
+        self.assertIn("'km' (distance)", captured_output.getvalue())
+        self.assertIn("'PST' (timezone)", captured_output.getvalue())
     
     def test_timezone_data_structure(self):
         """Test that timezone data is properly structured"""
@@ -2562,13 +2608,25 @@ class TestPycoTimezonesFunction(unittest.TestCase):
         self.assertIn('China Standard Time', output)  # Full name on right
     
     def test_timezones_search_no_match(self):
-        """Test timezones() with search that matches nothing"""
+        """Test timezones() with search that falls back to fuzzy matches"""
         captured_output = io.StringIO()
         with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             pyco.timezones('xyznotreal')
         
         output = captured_output.getvalue()
-        self.assertIn('No matching timezones found', output)
+        self.assertIn('TIMEZONES:', output)
+        self.assertNotIn('No matching timezones found', output)
+
+    def test_timezones_search_limits_to_top_five(self):
+        """Test that timezones(search) returns at most 5 rows."""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.timezones('time')
+
+        output = captured_output.getvalue()
+        rows = [line for line in output.splitlines() if line.startswith('  ') and line.strip()]
+        self.assertGreater(len(rows), 0)
+        self.assertLessEqual(len(rows), 5)
     
     def test_units_includes_timezone_section(self):
         """Test that units() includes timezone section"""
@@ -2612,6 +2670,23 @@ class TestPycoTimezonesFunction(unittest.TestCase):
         
         output = captured_output.getvalue()
         self.assertIn('China Standard Time', output)  # Full name shows China
+
+
+class TestPycoCurrenciesFunction(unittest.TestCase):
+    """Test currencies() function in pyco.py"""
+
+    def test_currencies_search_limits_to_top_five(self):
+        """Test that currencies(search) returns at most 5 rows."""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            pyco.currencies('dollar')
+
+        output = captured_output.getvalue()
+        self.assertIn('CURRENCIES:', output)
+
+        rows = [line for line in output.splitlines() if line.startswith('  ') and line.strip()]
+        self.assertGreater(len(rows), 0)
+        self.assertLessEqual(len(rows), 5)
 
 
 class TestNumberedResultsHistory(unittest.TestCase):
