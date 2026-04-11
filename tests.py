@@ -2093,7 +2093,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
     """Test convert function error handling with helpful suggestions"""
     
     def test_convert_both_units_invalid(self):
-        """Test convert with both units invalid shows generic error message"""
+        """Test convert with both units invalid shows generic message and global suggestions"""
         captured_output = io.StringIO()
         with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('xyz', 'abc', 5)
@@ -2106,13 +2106,16 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         # Should show generic error message
         self.assertIn("No conversion from 'xyz' to 'abc'", output)
         self.assertIn("Type 'units' to see available conversions", output)
-        
-        # Should not call units() function with search
-        self.assertNotIn("DISTANCE:", output)
-        self.assertNotIn("WEIGHT:", output)
+
+        # Should show search suggestions for the source term across categories
+        self.assertTrue(any(header in output for header in [
+            "ANGLE:", "AREA:", "CURRENCY:", "DISTANCE:", "ENERGY:",
+            "POWER:", "SPEED:", "TEMPERATURE:", "TIME:", "TIMEZONE:",
+            "VOLUME:", "WEIGHT:"
+        ]))
         
     def test_convert_invalid_from_unit_with_suggestions(self):
-        """Test convert with invalid from_unit shows suggestions"""
+        """Test convert with invalid from_unit shows suggestions from destination category"""
         captured_output = io.StringIO()
         with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('kilo', 'lb', 5)
@@ -2123,17 +2126,17 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         self.assertIsNone(result)
         
         # Should show specific error message for from_unit
-        self.assertIn("Could not convert the unit 'kilo'", output)
+        self.assertIn("Could not convert the weight 'kilo'", output)
         self.assertIn("Did you mean one of the following?", output)
         
-        # Should show suggestions (units containing "kilo")
+        # Should show suggestions from WEIGHT category only
+        self.assertIn("WEIGHT:", output)
         self.assertIn("kg", output)
         self.assertIn("kilograms", output)
-        self.assertIn("km", output)
-        self.assertIn("kilometers", output)
+        self.assertNotIn("DISTANCE:", output)
         
     def test_convert_invalid_to_unit_with_suggestions(self):
-        """Test convert with invalid to_unit shows suggestions"""
+        """Test convert with invalid to_unit shows suggestions from source category"""
         captured_output = io.StringIO()
         with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
             result = pyco.convert('kg', 'poun', 5)  # typo for pound
@@ -2144,12 +2147,14 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         self.assertIsNone(result)
         
         # Should show specific error message for to_unit
-        self.assertIn("Could not convert the unit 'poun'", output)
+        self.assertIn("Could not convert the weight 'poun'", output)
         self.assertIn("Did you mean one of the following?", output)
         
         # Should show suggestions for weight units similar to "poun"
+        self.assertIn("WEIGHT:", output)
         self.assertIn("lb", output)
         self.assertIn("pounds", output)
+        self.assertNotIn("DISTANCE:", output)
         
     def test_convert_invalid_unit_no_suggestions(self):
         """Test convert with invalid unit that has no similar matches"""
@@ -2163,7 +2168,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         self.assertIsNone(result)
         
         # Should show error message
-        self.assertIn("Could not convert the unit 'xyz123'", output)
+        self.assertIn("Could not convert the weight 'xyz123'", output)
         self.assertIn("Did you mean one of the following?", output)
         
         # Output should be relatively short since no matches found
@@ -2193,7 +2198,7 @@ class TestPycoConvertErrorHandling(unittest.TestCase):
         
         output = captured_output.getvalue()
         self.assertIsNone(result)
-        self.assertIn("Could not convert the unit 'celciu'", output)
+        self.assertIn("Could not convert the temperature 'celciu'", output)
 
 class TestPycoCombinedUnitConversions(unittest.TestCase):
     """Test combined unit conversions (e.g., mi/h to m/s) in pyco.py"""
@@ -2519,6 +2524,21 @@ class TestPycoTimezoneConversions(unittest.TestCase):
         self.assertIn("Cannot convert between categories", captured_output.getvalue())
         self.assertIn("'km' (distance)", captured_output.getvalue())
         self.assertIn("'PST' (timezone)", captured_output.getvalue())
+
+    def test_convert_timezone_to_ambiguous_ist_shows_suggestions(self):
+        """Test PST->IST shows top timezone suggestions for ambiguous IST."""
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output), patch('builtins.input', return_value=''):
+            result = pyco.convert('PST', 'IST', 8)
+
+        output = captured_output.getvalue()
+        self.assertIsNone(result)
+        self.assertIn("Could not convert the timezone 'IST'", output)
+        self.assertIn("TIMEZONE:", output)
+        self.assertIn("Indian IST", output)
+        self.assertIn("Irish IST", output)
+        self.assertIn("Israel IST", output)
+        self.assertNotIn("DISTANCE:", output)
     
     def test_timezone_data_structure(self):
         """Test that timezone data is properly structured"""

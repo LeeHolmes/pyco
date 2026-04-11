@@ -900,6 +900,13 @@ def _get_conversion_category(unit_str):
 
     return None
 
+
+def _get_category_error_noun(category):
+    """Return human-readable noun phrase for category-aware error messages."""
+    if category:
+        return category
+    return 'unit'
+
 def _get_search_similarity(unit_abbrev, unit_full_name, search_term):
     """Calculate similarity score for a unit against a search term.
     
@@ -1497,7 +1504,7 @@ def convert(from_unit="", to_unit="", value=0):
         ]
         _print_buffered(error_lines)
         return None
-    
+
     # Check if we're dealing with combined units (expressions with * or /)
     from_is_combined = _is_combined_unit(from_unit)
     to_is_combined = _is_combined_unit(to_unit)
@@ -1538,23 +1545,41 @@ def convert(from_unit="", to_unit="", value=0):
     # Check if units are valid before attempting conversion
     from_unit_valid = _is_valid_unit(from_unit)
     to_unit_valid = _is_valid_unit(to_unit)
+
+    # "Known" means we can classify the input into a category even if it is not
+    # a direct matrix unit (e.g., timezone abbreviations are handled separately).
+    from_unit_known = from_category is not None
+    to_unit_known = to_category is not None
     
     # Handle invalid units with helpful error messages
+    if not from_unit_known and not to_unit_known:
+        error_lines = [f"No conversion from '{from_unit}' to '{to_unit}'. Type 'units' to see available conversions."]
+        units_lines = _generate_units_lines(from_unit)
+        _print_buffered(error_lines + units_lines)
+        return None
+    elif not from_unit_known and to_unit_known:
+        error_noun = _get_category_error_noun(to_category)
+        error_lines = [f"Could not convert the {error_noun} '{from_unit}'. Did you mean one of the following?"]
+        suggestion_categories = [to_category] if to_category else None
+        units_lines = _generate_units_lines(from_unit, categories=suggestion_categories)
+        all_lines = error_lines + units_lines
+        _print_buffered(all_lines)
+        return None
+    elif from_unit_known and not to_unit_known:
+        error_noun = _get_category_error_noun(from_category)
+        error_lines = [f"Could not convert the {error_noun} '{to_unit}'. Did you mean one of the following?"]
+        suggestion_categories = [from_category] if from_category else None
+        units_lines = _generate_units_lines(to_unit, categories=suggestion_categories)
+        all_lines = error_lines + units_lines
+        _print_buffered(all_lines)
+        return None
+
+    # If both are known categories but still not valid matrix units, show a generic
+    # category-scoped suggestion list for the source token.
     if not from_unit_valid and not to_unit_valid:
         error_lines = [f"No conversion from '{from_unit}' to '{to_unit}'. Type 'units' to see available conversions."]
-        _print_buffered(error_lines)
-        return None
-    elif not from_unit_valid:
-        error_lines = [f"Could not convert the unit '{from_unit}'. Did you mean one of the following?"]
-        units_lines = _generate_units_lines(from_unit)
-        all_lines = error_lines + units_lines
-        _print_buffered(all_lines)
-        return None
-    elif not to_unit_valid:
-        error_lines = [f"Could not convert the unit '{to_unit}'. Did you mean one of the following?"]
-        units_lines = _generate_units_lines(to_unit)
-        all_lines = error_lines + units_lines
-        _print_buffered(all_lines)
+        units_lines = _generate_units_lines(from_unit, categories=[from_category]) if from_category else _generate_units_lines(from_unit)
+        _print_buffered(error_lines + units_lines)
         return None
     
     try:
