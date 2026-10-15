@@ -9,13 +9,13 @@ Unlike calculators that have buttons for each operation, pyco gives each operati
 When you open pyco, you will see the following:
 
 ```
-             ┌────────────┐
-             │┌───────8< ┐│
-             ││ pyco 0.1 ││
-             │└──────────┘│
-             │ ░ ░ ░ ░ ░  │
-             │  ░ ░ ░ ░ ░ │
-             └────────────┘
+             +------------+
+             |+-------8< +|
+             || pyco 0.1 ||
+             |+----------+|
+             | # # # # #  |
+             |  # # # # # |
+             +------------+
            Happy Calculating!
 
 >>>
