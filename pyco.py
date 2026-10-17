@@ -608,6 +608,7 @@ _CONVERSION_MATRIX = {
     
     # Distance conversions (smaller -> larger) - minimal spanning tree
     ('distance.in', 'distance.ft'): 1/12,
+    ('distance.ft', 'distance.yd'): 1/3,
     ('distance.in', 'distance.cm'): 2.54,
     ('distance.mm', 'distance.cm'): 1/10,
     ('distance.cm', 'distance.m'): 1/100,
@@ -687,6 +688,7 @@ _UNIT_NAMES = {
     # Distance units
     'in': 'inches',
     'ft': 'feet',
+    'yd': 'yards',
     'mm': 'millimeters',
     'cm': 'centimeters',
     'm': 'meters',

@@ -410,6 +410,25 @@ class TestPycoTemperatureConversions(unittest.TestCase):
 
 class TestPycoDistanceConversions(unittest.TestCase):
     """Test distance conversion functions in pyco.py"""
+
+    def test_convert_yards(self):
+        for unit, expected in [('ft', 3), ('in', 36), ('m', 0.9144),
+                               ('cm', 91.44), ('mm', 914.4),
+                               ('km', 0.0009144), ('mi', 1/1760)]:
+            with self.subTest(unit=unit):
+                self.assertAlmostEqual(pyco.convert('yd', unit, 1), expected)
+                self.assertAlmostEqual(pyco.convert(unit, 'yd', expected), 1)
+        self.assertEqual(pyco.convert('yd', 'ft', 0), 0)
+        self.assertAlmostEqual(pyco.convert('yd', 'ft', -2), -6)
+        self.assertAlmostEqual(pyco.convert('YD', 'FT', 0.5), 1.5)
+        self.assertAlmostEqual(pyco.convert('yd/s', 'm/s', 1), 0.9144)
+
+    def test_units_lists_yards(self):
+        with patch('sys.stdout', new_callable=io.StringIO) as output:
+            pyco.units('yards')
+        self.assertIn('DISTANCE:', output.getvalue())
+        self.assertIn('yd', output.getvalue())
+        self.assertIn('yards', output.getvalue())
     
     def test_convert_miles_kilometers(self):
         """Test miles to kilometers conversion"""

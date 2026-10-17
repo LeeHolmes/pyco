@@ -378,7 +378,7 @@ The units function is smart about typos too - try searching for "celcius" or "me
 
 **Supported conversions:**
 - **Temperature:** Celsius (c), Fahrenheit (f), Kelvin (k)
-- **Distance:** meters (m), feet (ft), inches (in), miles (mi), kilometers (km), centimeters (cm)
+- **Distance:** meters (m), feet (ft), yards (yd), inches (in), miles (mi), kilometers (km), centimeters (cm)
 - **Weight:** grams (g), kilograms (kg), pounds (lb), ounces (oz), tons (t), stone (st)
 - **Volume:** liters (l), milliliters (ml), cups, pints (pt), quarts (qt), gallons (gal), fluid ounces (floz), tablespoons (tbsp), teaspoons (tsp)
 - **Area:** square inches (in2), square feet (ft2), square meters (m2), square centimeters (cm2), acres (ac)
